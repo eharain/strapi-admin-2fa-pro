@@ -1,0 +1,59 @@
+{
+  "kind": "collectionType",
+  "collectionName": "two_factor_factors",
+  "info": {
+    "singularName": "factor",
+    "pluralName": "factors",
+    "displayName": "Two-factor factor",
+    "description": "One authenticator enrolment for one admin user or one users-permissions user"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "content-manager": { "visible": false },
+    "content-type-builder": { "visible": false }
+  },
+  "attributes": {
+    "subjectType": {
+      "type": "enumeration",
+      "enum": ["admin", "user"],
+      "required": true
+    },
+    "subjectId": {
+      "type": "string",
+      "required": true
+    },
+    "method": {
+      "type": "enumeration",
+      "enum": ["totp"],
+      "default": "totp",
+      "required": true
+    },
+    "label": {
+      "type": "string"
+    },
+    "secretEnc": {
+      "type": "text",
+      "required": true,
+      "private": true
+    },
+    "confirmedAt": {
+      "type": "datetime"
+    },
+    "lastUsedAt": {
+      "type": "datetime"
+    },
+    "lastCounter": {
+      "type": "string",
+      "private": true
+    },
+    "failedAttempts": {
+      "type": "integer",
+      "default": 0
+    },
+    "lockedUntil": {
+      "type": "datetime"
+    }
+  }
+}

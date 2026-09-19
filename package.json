@@ -1,0 +1,92 @@
+{
+  "name": "strapi-admin-2fa-pro",
+  "version": "0.1.0",
+  "description": "Two-factor authentication for Strapi v5 — TOTP with QR enrolment and recovery codes, enforced on the admin panel login and, optionally, on users-permissions sign-in.",
+  "license": "AGPL-3.0-or-later",
+  "author": {
+    "name": "Ejaz Hussain Arain",
+    "email": "eharain@yahoo.com",
+    "url": "https://www.linkedin.com/in/ejazarain"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/eharain/strapi-admin-2fa-pro.git"
+  },
+  "bugs": {
+    "url": "https://github.com/eharain/strapi-admin-2fa-pro/issues"
+  },
+  "homepage": "https://github.com/eharain/strapi-admin-2fa-pro#readme",
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "keywords": [
+    "strapi",
+    "strapi-plugin",
+    "strapi-v5",
+    "2fa",
+    "two-factor",
+    "two-factor-authentication",
+    "mfa",
+    "multi-factor",
+    "totp",
+    "rfc6238",
+    "authenticator",
+    "google-authenticator",
+    "otp",
+    "one-time-password",
+    "recovery-codes",
+    "admin-security",
+    "login-security",
+    "account-security",
+    "users-permissions",
+    "security"
+  ],
+  "exports": {
+    "./strapi-admin": {
+      "source": "./admin/src/index.js",
+      "import": "./admin/src/index.js",
+      "require": "./admin/src/index.js",
+      "default": "./admin/src/index.js"
+    },
+    "./strapi-server": {
+      "source": "./server/src/index.js",
+      "import": "./server/src/index.js",
+      "require": "./server/src/index.js",
+      "default": "./server/src/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "admin/",
+    "server/",
+    "docs/",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "COMMERCIAL-LICENSE.md"
+  ],
+  "strapi": {
+    "name": "two-factor",
+    "kind": "plugin",
+    "displayName": "Two-Factor Auth Pro",
+    "description": "TOTP two-factor authentication for the admin panel and users-permissions accounts"
+  },
+  "scripts": {
+    "prepare": "git config core.hooksPath .githooks || exit 0",
+    "test": "node --test \"tests/*.test.js\""
+  },
+  "dependencies": {
+    "otplib": "^13.5.0",
+    "qrcode": "^1.5.4"
+  },
+  "peerDependencies": {
+    "@strapi/strapi": "^5.0.0",
+    "react": "^17.0.0 || ^18.0.0",
+    "react-dom": "^17.0.0 || ^18.0.0",
+    "react-router-dom": "^6.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

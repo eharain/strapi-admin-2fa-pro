@@ -1,0 +1,36 @@
+{
+  "kind": "collectionType",
+  "collectionName": "two_factor_recovery_codes",
+  "info": {
+    "singularName": "recovery-code",
+    "pluralName": "recovery-codes",
+    "displayName": "Two-factor recovery code",
+    "description": "A single-use code that stands in for the authenticator when the phone is gone"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "pluginOptions": {
+    "content-manager": { "visible": false },
+    "content-type-builder": { "visible": false }
+  },
+  "attributes": {
+    "subjectType": {
+      "type": "enumeration",
+      "enum": ["admin", "user"],
+      "required": true
+    },
+    "subjectId": {
+      "type": "string",
+      "required": true
+    },
+    "codeHash": {
+      "type": "string",
+      "required": true,
+      "private": true
+    },
+    "usedAt": {
+      "type": "datetime"
+    }
+  }
+}

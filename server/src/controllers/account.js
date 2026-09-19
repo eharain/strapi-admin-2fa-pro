@@ -112,5 +112,38 @@ module.exports = ({ strapi, subjectType }) => {
       await factors().verifyCode({ subjectType, subjectId, code: requireCode(ctx), allowRecovery: false });
       ctx.body = { data: await factors().regenerateRecoveryCodes({ subjectType, subjectId }) };
     }),
+
+    /**
+     * Check a code and change nothing else.
+     *
+     * This is for an application that runs its own sign-in and wants this
+     * plugin to be the one place a second factor lives — a separate identity
+     * service, a step-up prompt before something dangerous, a re-authentication
+     * box. It answers for whoever the token belongs to and nobody else, so
+     * there is no way to ask about another account.
+     *
+     * The code is still spent: a success here cannot be replayed anywhere else,
+     * and a failure still counts towards the lockout. "No side effects" means
+     * no enrolment changes, not a free guess.
+     */
+    verify: handled(async (ctx) => {
+      const { subjectId } = subjectOf(ctx);
+      const allowRecovery = ctx.request.body?.allowRecovery !== false;
+
+      const result = await factors().verifyCode({
+        subjectType,
+        subjectId,
+        code: requireCode(ctx),
+        allowRecovery,
+      });
+
+      ctx.body = {
+        data: {
+          valid: true,
+          method: result.method,
+          recoveryCodesRemaining: result.remaining ?? null,
+        },
+      };
+    }),
   };
 };

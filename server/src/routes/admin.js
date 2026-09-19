@@ -48,6 +48,7 @@ module.exports = {
       handler: 'admin-account.recoveryCodes',
       config: authenticated,
     },
+    { method: 'POST', path: '/me/verify', handler: 'admin-account.verify', config: authenticated },
 
     {
       method: 'GET',

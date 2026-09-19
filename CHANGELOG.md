@@ -4,6 +4,23 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [semantic versioning](https://semver.org/).
 
+## [0.2.0] — 2026-09-20
+
+### Added
+
+- **`POST /me/verify`**, on both the admin and the content-API surface: check a
+  code for whoever the token belongs to and change nothing else. It answers only
+  about the caller, so there is no way to ask about another account.
+
+  This is for an application that runs its own sign-in and wants this plugin to
+  be the one place a second factor lives — a separate identity service, a
+  step-up prompt before something dangerous, a re-authentication box. Without
+  it, the only ways to check a code were the login challenge (which needs a
+  challenge the plugin itself issued) and the endpoints that change something.
+
+  The code is still spent on success and still counts towards the lockout on
+  failure. "Changes nothing else" means no enrolment changes, not a free guess.
+
 ## [0.1.0] — 2026-09-20
 
 First release.

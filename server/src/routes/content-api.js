@@ -23,5 +23,6 @@ module.exports = {
     { method: 'POST', path: '/me/confirm', handler: 'user-account.confirm', config: signedIn },
     { method: 'POST', path: '/me/disable', handler: 'user-account.disable', config: signedIn },
     { method: 'POST', path: '/me/recovery-codes', handler: 'user-account.recoveryCodes', config: signedIn },
+    { method: 'POST', path: '/me/verify', handler: 'user-account.verify', config: signedIn },
   ],
 };

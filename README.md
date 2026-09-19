@@ -156,6 +156,7 @@ it fails closed.
 | POST | `/me/confirm` | any admin | Confirm it, receive recovery codes |
 | POST | `/me/disable` | any admin | Remove it (needs a live code) |
 | POST | `/me/recovery-codes` | any admin | Fresh codes (needs a live code) |
+| POST | `/me/verify` | any admin | Check a code and change nothing else |
 | GET | `/administration` | `settings.read` | Policy, roles, coverage |
 | PUT | `/administration/settings` | `settings.update` | Change the policy |
 | POST | `/administration/admins/:id/reset` | `admins.manage` | Remove someone's authenticator |
@@ -169,10 +170,32 @@ authentication**.
 
 The same shape for users-permissions accounts: `/challenge/verify`,
 `/challenge/confirm`, and `/me`, `/me/enroll`, `/me/confirm`, `/me/disable`,
-`/me/recovery-codes` with the user's JWT.
+`/me/recovery-codes`, `/me/verify` with the user's JWT.
 
 These need no role permissions ticked — the routes authenticate the caller
 themselves and refuse anyone who is not signed in.
+
+### Using this as the store for your own sign-in
+
+If you already have an identity service and want one place for second factors
+rather than two, `POST /me/verify` is the seam:
+
+```
+POST /api/two-factor/me/verify
+Authorization: Bearer <that person's JWT>
+{"code":"123456"}
+
+200 { "data": { "valid": true, "method": "totp", "recoveryCodesRemaining": null } }
+401 { "error": { "message": "That code is not valid" } }
+```
+
+Your service keeps sign-in, sessions and step-up; enrolment, recovery codes,
+replay protection and lockout live here. Every call is made with the person's
+own token, so this plugin will not answer questions about somebody else — there
+is no "check this code for user 42" endpoint to leak or to get wrong.
+
+Note that a success spends the code and a failure counts towards the lockout, so
+this is a verification, not a dry run.
 
 Your front end handles the sign-in exchange the same way:
 

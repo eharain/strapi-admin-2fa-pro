@@ -1,1 +1,1 @@
-# trapi-admin-2fa-pro
+# strapi-admin-2fa-pro

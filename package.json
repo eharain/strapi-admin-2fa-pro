@@ -10,12 +10,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/eharain/strapi-admin-2fa-pro.git"
+    "url": "git+https://github.com/tech-style/strapi-admin-2fa-pro.git"
   },
   "bugs": {
-    "url": "https://github.com/eharain/strapi-admin-2fa-pro/issues"
+    "url": "https://github.com/tech-style/strapi-admin-2fa-pro/issues"
   },
-  "homepage": "https://github.com/eharain/strapi-admin-2fa-pro#readme",
+  "homepage": "https://github.com/tech-style/strapi-admin-2fa-pro#readme",
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"

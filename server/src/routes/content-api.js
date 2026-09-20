@@ -3,12 +3,16 @@
 /**
  * Mounted at `/api/two-factor` — the surface a users-permissions account uses.
  *
- * `auth: false` on every route here means "this route needs no *permission*",
- * not "this route is public": Strapi still runs the authentication strategies,
- * so a valid JWT still lands in `ctx.state.user`, and the controller refuses
- * anyone who is not signed in. Doing it this way means a site does not have to
- * tick five boxes in the Users & Permissions roles screen before its own users
- * can protect their accounts.
+ * `auth: false` here means "this route needs no *permission*" — a site should
+ * not have to tick five boxes in the Users & Permissions roles screen before
+ * its own people can protect their accounts.
+ *
+ * It does NOT mean Strapi authenticates the caller anyway. This comment used to
+ * claim it did, and 0.4.x shipped on that claim: `@strapi/core`'s auth service
+ * returns before any strategy when `auth` is false, so `ctx.state.user` stayed
+ * empty and every `/me` route refused everybody with "Sign in first". The token
+ * is read by `gates/signed-in.js`, attached to these routes in `register.js`.
+ * Changing `auth` here without keeping that gate brings the bug straight back.
  */
 const signedIn = { auth: false };
 

@@ -3,6 +3,8 @@
 const adminLoginGate = require('./gates/admin-login');
 const usersLoginGate = require('./gates/users-login');
 const providerCallbackGate = require('./gates/provider-callback');
+const signedInGate = require('./gates/signed-in');
+const ownRoutes = require('./routes');
 
 /**
  * Wire the two gates into the two login routes.
@@ -78,5 +80,18 @@ module.exports = ({ strapi }) => {
           'providers enabled, a sign-in through one is NOT covered by the second factor — please open an issue.'
       );
     }
+  }
+
+  /**
+   * This plugin's own `/me` routes: read the bearer, and say whose it is.
+   *
+   * They carry `auth: false` so a site needs nothing ticked in the roles screen
+   * before its people can protect their accounts — but `auth: false` also means
+   * Strapi runs no authentication strategy on them, so nothing ever filled
+   * `ctx.state.user` and every one of them refused the person it exists for.
+   * See `gates/signed-in.js`.
+   */
+  for (const route of ownRoutes['content-api'].routes) {
+    if (route.path.startsWith('/me')) attach(route, signedInGate({ strapi }));
   }
 };

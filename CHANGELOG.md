@@ -4,6 +4,32 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [semantic versioning](https://semver.org/).
 
+## [0.5.0] — 2026-09-20
+
+### Fixed
+
+- **Every `/api/two-factor/me` call refused the person it exists for.** The
+  users-permissions surface — status, enrolment, confirmation, verification,
+  recovery codes — answered `401 "Sign in first"` on a perfectly valid token,
+  so an account could never set up an authenticator, and a service using this
+  as its factor store was told to sign in again forever.
+
+  Those routes carry `auth: false`, written believing it meant "no
+  *permission* is needed, but Strapi still authenticates the caller". It does
+  not: `@strapi/core`'s auth service returns before any strategy runs when a
+  route's `auth` is false, so `ctx.state.user` was never filled. Confirmed
+  against Strapi 5.51.
+
+  `auth: false` stays — a site should not have to grant permissions in the
+  roles screen before its own people can protect their accounts — and the
+  bearer is now read by the plugin itself (`gates/signed-in.js`) with the same
+  users-permissions JWT service that issued it. It only ever adds the identity
+  the token names: no token, a forged or expired one, a blocked account, or one
+  that has been deleted all stay nobody, which the controllers already refuse.
+
+  **The admin panel was never affected** — its routes use
+  `admin::isAuthenticatedAdmin`, and that strategy does run.
+
 ## [0.4.1] — 2026-09-20
 
 ### Fixed

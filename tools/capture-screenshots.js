@@ -131,6 +131,92 @@ const CARD_SELECTOR = 'main';
 /** Type into a labelled field without caring how the DOM is arranged. */
 const fill = (page, id, value) => page.fill(`#${id}`, value);
 
+const decodeAttr = (value) =>
+  value.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&amp;/g, '&');
+
+const encodeAttr = (value) =>
+  value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
+/**
+ * Show page options this instance does not have switched on.
+ *
+ * Registration and the provider buttons are decided on the server and arrive on
+ * the page's data attribute, so a stubbed API answer cannot reach them. Rather
+ * than turn sign-ups and Google on for real just to photograph them, the real
+ * page is fetched and that one attribute is rewritten.
+ */
+const withPageOptions = (page, extra) =>
+  page.route('**/two-factor/account', async (route) => {
+    const response = await route.fetch();
+    const html = (await response.text()).replace(/data-config="([^"]*)"/, (match, encoded) => {
+      const config = { ...JSON.parse(decodeAttr(encoded)), ...extra };
+      return `data-config="${encodeAttr(JSON.stringify(config))}"`;
+    });
+    await route.fulfill({ response, body: html, contentType: 'text/html; charset=utf-8' });
+  });
+
+const PROVIDERS = [
+  { name: 'google', label: 'Google' },
+  { name: 'github', label: 'GitHub' },
+];
+
+/**
+ * The screens a site gets when it turns registration and SSO on: the sign-in
+ * with provider buttons, creating an account, and the wait for the
+ * confirmation email.
+ */
+async function captureSignUp(browser) {
+  console.log('\nSign-up and providers');
+  const context = await browser.newContext({ viewport: CARD, deviceScaleFactor: 2 });
+  const page = await context.newPage();
+
+  await withPageOptions(page, { allowRegistration: true, providers: PROVIDERS });
+
+  await page.goto(`${BASE}/two-factor/account`, { waitUntil: 'networkidle' });
+  await page.waitForSelector('#identifier');
+  await shot(page, 'account-sign-in-options', 'sign-in with SSO and sign-up offered', CARD_SELECTOR);
+
+  await page.click('text=Create an account');
+  await page.waitForSelector('#username');
+  await shot(page, 'account-sign-up', 'creating an account', CARD_SELECTOR);
+
+  // A site that asks people to confirm their address answers without a token.
+  await page.route('**/two-factor/account/register', (route) =>
+    route.fulfill(json({ user: { id: 12, username: 'sam', email: 'sam@example.com', confirmed: false } }))
+  );
+  await fill(page, 'username', 'sam');
+  await fill(page, 'email', 'sam@example.com');
+  await fill(page, 'password', 'not-a-real-password');
+  await page.click('button[type=submit]');
+  await page.waitForSelector('text=Confirm your email');
+  await shot(page, 'account-confirm-email', 'waiting on the confirmation email', CARD_SELECTOR);
+
+  await context.close();
+}
+
+/** Changing a password from the account page. */
+async function captureChangePassword(browser) {
+  const context = await browser.newContext({ viewport: CARD, deviceScaleFactor: 2 });
+  const page = await context.newPage();
+
+  await page.route('**/two-factor/account/login', (route) =>
+    route.fulfill(json({ jwt: 'stub-jwt', user: { id: 1, email: 'sam@example.com' } }))
+  );
+  await page.route('**/api/two-factor/me', (route) => route.fulfill(ACCOUNT_STATUS(true)));
+
+  await page.goto(`${BASE}/two-factor/account`, { waitUntil: 'networkidle' });
+  await fill(page, 'identifier', 'sam@example.com');
+  await fill(page, 'password', 'not-a-real-password');
+  await page.click('button[type=submit]');
+  await page.waitForSelector('.status');
+
+  await page.click('text=Change my password');
+  await page.waitForSelector('#current');
+  await shot(page, 'account-change-password', 'changing a password while signed in', CARD_SELECTOR);
+
+  await context.close();
+}
+
 async function captureHostedPages(browser, enrolment) {
   console.log('\nHosted account pages');
   const context = await browser.newContext({ viewport: CARD, deviceScaleFactor: 2 });
@@ -294,6 +380,8 @@ async function captureAdminPages(browser) {
 
   try {
     await captureHostedPages(browser, enrolment);
+    await captureSignUp(browser);
+    await captureChangePassword(browser);
     await captureMobile(browser, enrolment);
     await captureAdminPages(browser);
   } finally {

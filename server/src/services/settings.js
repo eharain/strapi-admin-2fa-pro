@@ -25,6 +25,8 @@ const OVERRIDABLE = {
   'screens.title': (v) => v === null || (typeof v === 'string' && v.length <= 120),
   'screens.logoUrl': (v) => v === null || (typeof v === 'string' && v.length <= 2000),
   'screens.allowPasswordReset': (v) => typeof v === 'boolean',
+  'screens.allowRegistration': (v) => typeof v === 'boolean',
+  'screens.showProviders': (v) => typeof v === 'boolean',
   'screens.redirectOrigins': (v) =>
     Array.isArray(v) &&
     v.every((origin) => {
@@ -71,6 +73,8 @@ module.exports = ({ strapi }) => {
       title: strapi.config.get(`plugin::${PLUGIN_ID}.screens.title`, null),
       logoUrl: strapi.config.get(`plugin::${PLUGIN_ID}.screens.logoUrl`, null),
       allowPasswordReset: strapi.config.get(`plugin::${PLUGIN_ID}.screens.allowPasswordReset`, true),
+      allowRegistration: strapi.config.get(`plugin::${PLUGIN_ID}.screens.allowRegistration`, false),
+      showProviders: strapi.config.get(`plugin::${PLUGIN_ID}.screens.showProviders`, true),
       redirectOrigins: strapi.config.get(`plugin::${PLUGIN_ID}.screens.redirectOrigins`, []),
     },
   });

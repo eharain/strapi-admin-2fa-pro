@@ -34,6 +34,11 @@ const createStrapi = (overrides = {}) => {
     instances[name] = factory({ strapi });
   }
 
+  // A test can replace a service with a stub — the gates reach for `policy` and
+  // `factors`, and what is under test there is what the gate does with the
+  // answer, not how the answer was reached.
+  Object.assign(instances, overrides.services || {});
+
   strapi.services = instances;
   return strapi;
 };

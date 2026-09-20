@@ -20,6 +20,30 @@ module.exports = ({ strapi }) => {
   const tokens = () => getService(strapi, 'tokens');
   const factors = () => getService(strapi, 'factors');
 
+  /**
+   * A challenge that came from an SSO sign-in ends in a session rather than a
+   * proof: there is no password sign-in to replay one against. Only a challenge
+   * the provider gate issued can do this, which is what `pv` records — and the
+   * gate is the only thing that sets it, on a signed token.
+   */
+  const sessionFor = async (claims) => {
+    if (!claims.pv || claims.st !== 'user') return null;
+
+    const plugin = strapi.plugin('users-permissions');
+    if (!plugin) return null;
+
+    const user = await strapi.db
+      .query('plugin::users-permissions.user')
+      .findOne({ where: { id: claims.sid } });
+
+    if (!user || user.blocked) throw new ValidationError('That account cannot sign in');
+
+    return {
+      jwt: plugin.service('jwt').issue({ id: user.id }),
+      user: { id: user.id, username: user.username, email: user.email },
+    };
+  };
+
   const read = (ctx) => {
     const { challenge, code } = ctx.request.body ?? {};
     if (typeof challenge !== 'string' || challenge === '') {
@@ -57,6 +81,7 @@ module.exports = ({ strapi }) => {
           expiresIn: proof.expiresIn,
           method: result.method,
           recoveryCodesRemaining: result.remaining ?? null,
+          session: await sessionFor(claims),
         },
       };
     }),
@@ -83,7 +108,13 @@ module.exports = ({ strapi }) => {
       const proof = tokens().issueProof({ subjectType: claims.st, subjectId: claims.sid, email: claims.em });
 
       ctx.body = {
-        data: { proof: proof.token, expiresIn: proof.expiresIn, enrolled: true, recoveryCodes },
+        data: {
+          proof: proof.token,
+          expiresIn: proof.expiresIn,
+          enrolled: true,
+          recoveryCodes,
+          session: await sessionFor(claims),
+        },
       };
     }),
   };

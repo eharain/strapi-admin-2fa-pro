@@ -68,7 +68,13 @@ module.exports = ({ strapi }) => {
   };
 
   return {
-    issueChallenge({ subjectType, subjectId, email, enrolling = false }) {
+    /**
+     * `provider` marks a challenge that came from an SSO sign-in. Completing
+     * one hands back a session directly, because there is no password sign-in
+     * to replay — so it is marked, and the marking is checked before anything
+     * is minted.
+     */
+    issueChallenge({ subjectType, subjectId, email, enrolling = false, provider = false }) {
       const ttl = read('challengeTtlSeconds', 180);
       return {
         token: encode({
@@ -78,6 +84,7 @@ module.exports = ({ strapi }) => {
           sid: String(subjectId),
           em: String(email || '').toLowerCase(),
           en: Boolean(enrolling),
+          ...(provider ? { pv: true } : {}),
           jti: randomUUID(),
           exp: Math.floor(Date.now() / 1000) + ttl,
         }),

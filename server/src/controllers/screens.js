@@ -56,6 +56,26 @@ module.exports = ({ strapi }) => {
     return config;
   };
 
+  /**
+   * The SSO providers this site actually has switched on, read from
+   * users-permissions' own store. `email` is the password sign-in, not a
+   * provider, so it is not one of these.
+   */
+  const enabledProviders = async () => {
+    if (!strapi.plugin('users-permissions')) return [];
+
+    const grant = await strapi
+      .store({ type: 'plugin', name: 'users-permissions' })
+      .get({ key: 'grant' })
+      .catch(() => null);
+
+    if (!grant) return [];
+
+    return Object.entries(grant)
+      .filter(([name, settings]) => name !== 'email' && settings?.enabled)
+      .map(([name]) => ({ name, label: name.charAt(0).toUpperCase() + name.slice(1) }));
+  };
+
   /** The server root, whatever path the app is mounted under. */
   const baseOf = (ctx) => {
     const path = ctx.request.path.replace(/\/two-factor\/account\/?$/, '');
@@ -98,6 +118,7 @@ module.exports = ({ strapi }) => {
     page: handled(async (ctx) => {
       const config = await requireEnabled();
       const redirect = checkRedirect(config, ctx);
+      const providers = config.screens.showProviders ? await enabledProviders() : [];
 
       ctx.type = 'html';
       // These pages hold a token in the browser; they have no business being
@@ -111,6 +132,8 @@ module.exports = ({ strapi }) => {
         title: config.screens.title || totp().issuer(),
         logoUrl: config.screens.logoUrl,
         allowPasswordReset: config.screens.allowPasswordReset,
+        allowRegistration: config.screens.allowRegistration,
+        providers,
         redirect,
       });
     }),
@@ -141,6 +164,50 @@ module.exports = ({ strapi }) => {
       const auth = upAuth();
       ctx.params = { ...(ctx.params ?? {}), provider: 'local' };
       await gate(ctx, () => auth.callback(ctx));
+    }),
+
+    /**
+     * Create an account. Two switches have to be on: this plugin's, and
+     * users-permissions' own `allow_register` — which its controller checks, so
+     * turning the plugin's on does not open registration on a site that closed
+     * it.
+     */
+    register: handled(async (ctx) => {
+      const config = await requireEnabled();
+      if (!config.screens.allowRegistration) throw new NotFoundError('Not found');
+      await upAuth().register(ctx);
+    }),
+
+    /**
+     * The link in the confirmation email. `returnUser` keeps the controller from
+     * redirecting somewhere configured for a different front end — but the
+     * session it offers is thrown away. Confirming an address should not hand
+     * out a signed-in session: that would be a third way past the second factor,
+     * and the person is one ordinary sign-in away from being in anyway.
+     */
+    emailConfirmation: handled(async (ctx) => {
+      await requireEnabled();
+      const confirmation = ctx.request.body?.confirmation ?? ctx.query.confirmation;
+      ctx.query = { ...(ctx.query ?? {}), confirmation };
+
+      await upAuth().emailConfirmation(ctx, null, true);
+      ctx.body = { confirmed: true };
+    }),
+
+    resendConfirmation: handled(async (ctx) => {
+      await requireEnabled();
+      await upAuth().sendEmailConfirmation(ctx);
+    }),
+
+    /**
+     * Change a password while signed in. The route is `auth: false` — meaning
+     * no *permission* is needed — but users-permissions' own controller refuses
+     * anyone who is not authenticated, and Strapi has already resolved the
+     * bearer token by the time it runs.
+     */
+    changePassword: handled(async (ctx) => {
+      await requireEnabled();
+      await upAuth().changePassword(ctx);
     }),
 
     forgotPassword: handled(async (ctx) => {

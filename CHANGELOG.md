@@ -4,6 +4,44 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [semantic versioning](https://semver.org/).
 
+## [0.4.0] — 2026-09-20
+
+### Security
+
+- **An SSO sign-in went round the second factor.** The password sign-in is
+  gated at `POST /api/auth/local`, but signing in through a provider is a
+  different route — `GET /api/auth/:provider/callback` — on the same
+  controller, and it mints a token of its own. On any site with both an
+  authenticator and a provider enabled, anyone who could get through the
+  provider was inside, code or no code.
+
+  It is gated now. It has to work the other way up from the password gate: the
+  provider decides who this is *inside* the handler, so the handler runs and
+  what it produced is taken back — the token is removed from the response,
+  every cookie it set is dropped, and the refresh session it opened is
+  invalidated — and the ordinary challenge goes back instead.
+
+  A challenge raised this way is marked as such, because completing it returns
+  a session directly: unlike the password flow there is no sign-in to replay.
+  Only a challenge the provider gate signed can do that.
+
+  **If you run this plugin with users-permissions SSO providers enabled,
+  upgrade.** If you do not use providers, nothing here affects you.
+
+### Added
+
+- **Create an account**, with the "check your email" step, the confirmation
+  link landing page and a resend. Two switches have to be on: the plugin's
+  `screens.allowRegistration` and users-permissions' own `allow_register`, so
+  turning the plugin's on does not open registration on a site that closed it.
+  Confirming an address deliberately does **not** hand out a session — that
+  would have been a third way past the second factor.
+- **Change your password** while signed in, on the account page, through
+  users-permissions' own `changePassword` so your password rules still apply.
+- **Provider sign-in buttons** for whichever SSO providers users-permissions
+  has enabled, read from its own store. A provider sign-in now asks for the
+  second factor like any other.
+
 ## [0.3.0] — 2026-09-20
 
 ### Added

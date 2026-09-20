@@ -204,6 +204,43 @@ a, button.link {
 .pill.off { color: var(--danger); background: var(--danger-bg); }
 
 .hidden { display: none; }
+
+.providers { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+
+.provider {
+  display: block;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+  text-decoration: none;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.or {
+  position: relative;
+  margin: 0 0 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.or::before,
+.or::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: calc(50% - 20px);
+  border-top: 1px solid var(--border);
+}
+
+.or::before { left: 0; }
+.or::after { right: 0; }
+
+.divider { margin: 20px 0; border-top: 1px solid var(--border); }
 `;
 
 /**
@@ -318,15 +355,141 @@ const SCRIPT = `
       submit
     ]);
 
+    var providers = (CONFIG.providers || []).map(function (provider) {
+      return el('a', {
+        class: 'provider',
+        href: API + '/api/connect/' + encodeURIComponent(provider.name),
+        text: 'Continue with ' + provider.label
+      });
+    });
+
     render([
+      providers.length ? el('div', { class: 'providers' }, providers) : null,
+      providers.length ? el('div', { class: 'or', text: 'or' }) : null,
       form,
       CONFIG.allowPasswordReset
         ? el('p', { class: 'linkline' }, [
             el('button', { class: 'link', type: 'button', text: 'Forgot your password?', onclick: forgot })
           ])
+        : null,
+      CONFIG.allowRegistration
+        ? el('p', { class: 'linkline' }, [
+            el('button', { class: 'link', type: 'button', text: 'Create an account', onclick: function () { signUp(); } })
+          ])
         : null
     ]);
     identifier.focus();
+  }
+
+  // ── creating an account ──────────────────────────────────────────────────
+  function signUp(message) {
+    var username = el('input', { id: 'username', type: 'text', autocomplete: 'username' });
+    var email = el('input', { id: 'email', type: 'email', autocomplete: 'email' });
+    var password = el('input', { id: 'password', type: 'password', autocomplete: 'new-password' });
+    var submit = el('button', { type: 'submit', text: 'Create the account' });
+
+    var form = el('form', { onsubmit: function (event) {
+      event.preventDefault();
+      if (!username.value.trim() || !email.value.trim() || !password.value) return;
+      busy(submit, true, 'Create the account');
+
+      call('/two-factor/account/register', {
+        username: username.value.trim(),
+        email: email.value.trim(),
+        password: password.value
+      })
+        .then(function (result) {
+          busy(submit, false, 'Create the account');
+          if (!result.ok) return signUp(messageOf(result, 'That did not work'));
+          // No token back means the site asks people to confirm their address.
+          if (!result.payload.jwt) return checkEmail(email.value.trim());
+          state.identifier = email.value.trim();
+          return signedIn(result.payload.jwt);
+        })
+        .catch(function () {
+          busy(submit, false, 'Create the account');
+          signUp('Could not reach the server. Try again.');
+        });
+    } }, [
+      note(message),
+      el('h2', { text: 'Create an account' }),
+      el('label', { for: 'username', text: 'Username' }),
+      username,
+      el('label', { for: 'email', text: 'Email address' }),
+      email,
+      el('label', { for: 'password', text: 'Password' }),
+      password,
+      submit
+    ]);
+
+    render([
+      form,
+      el('p', { class: 'linkline' }, [
+        el('button', { class: 'link', type: 'button', text: 'I already have an account', onclick: function () { signIn(); } })
+      ])
+    ]);
+    username.focus();
+  }
+
+  function checkEmail(address, message, kind) {
+    render([
+      note(message, kind),
+      el('h2', { text: 'Confirm your email' }),
+      el('p', { class: 'lede', text: 'We have sent a link to ' + address + '. Open it to finish setting up your account.' }),
+      el('button', { class: 'ghost', type: 'button', text: 'Send it again', onclick: function () {
+        call('/two-factor/account/resend-confirmation', { email: address }).then(function (result) {
+          checkEmail(address, result.ok ? 'Sent again.' : messageOf(result, 'That did not work'), result.ok ? 'ok' : 'error');
+        });
+      } }),
+      el('p', { class: 'linkline' }, [
+        el('button', { class: 'link', type: 'button', text: 'Back to sign in', onclick: function () { signIn(); } })
+      ])
+    ]);
+  }
+
+  function confirmEmail(token) {
+    render([el('h2', { text: 'Confirming your email' }), el('p', { class: 'lede', text: 'One moment…' })]);
+
+    call('/two-factor/account/email-confirmation', { confirmation: token }).then(function (result) {
+      history.replaceState(null, '', window.location.pathname);
+      if (!result.ok) return signIn(messageOf(result, 'That link is no longer valid.'));
+      signIn('Your email is confirmed. Sign in to continue.');
+    });
+  }
+
+  // ── coming back from a provider ──────────────────────────────────────────
+  function returnFromProvider(accessToken, provider) {
+    render([el('h2', { text: 'Signing you in' }), el('p', { class: 'lede', text: 'One moment…' })]);
+
+    var name = provider || 'google';
+    fetch(API + '/api/auth/' + encodeURIComponent(name) + '/callback?access_token=' + encodeURIComponent(accessToken))
+      .then(function (response) {
+        return response.text().then(function (text) {
+          var payload = null;
+          try { payload = text ? JSON.parse(text) : null; } catch (err) { payload = null; }
+          return { ok: response.ok, payload: payload };
+        });
+      })
+      .then(function (result) {
+        history.replaceState(null, '', window.location.pathname);
+
+        var twoFactor = result.payload && result.payload.error && result.payload.error.details
+          && result.payload.error.details.twoFactor;
+
+        if (twoFactor) {
+          // The provider said who this is; the second factor is still owed.
+          state.challenge = twoFactor.challenge;
+          state.enrolment = twoFactor.enrolment || null;
+          return twoFactor.enrolmentRequired ? enrol() : secondFactor(twoFactor);
+        }
+        if (!result.ok || !result.payload || !result.payload.jwt) {
+          return signIn(messageOf(result, 'That sign-in did not work'));
+        }
+        return signedIn(result.payload.jwt);
+      })
+      .catch(function () {
+        signIn('Could not reach the server. Try again.');
+      });
   }
 
   // ── the second factor ────────────────────────────────────────────────────
@@ -351,6 +514,12 @@ const SCRIPT = `
           if (!result.ok) {
             busy(submit, false, 'Verify');
             return secondFactor(twoFactor, messageOf(result, 'That code is not valid'), recovery);
+          }
+          // A provider sign-in comes back with the session itself: there is no
+          // password sign-in to replay a proof against.
+          if (result.payload.data.session) {
+            busy(submit, false, 'Verify');
+            return signedIn(result.payload.data.session.jwt);
           }
           return finishSignIn(result.payload.data.proof, submit);
         })
@@ -401,8 +570,10 @@ const SCRIPT = `
         .then(function (result) {
           busy(submit, false, 'Confirm');
           if (!result.ok) return enrol(messageOf(result, 'That code is not valid'));
-          return recoveryCodes(result.payload.data.recoveryCodes, function () {
-            finishSignIn(result.payload.data.proof);
+          var data = result.payload.data;
+          return recoveryCodes(data.recoveryCodes, function () {
+            if (data.session) return signedIn(data.session.jwt);
+            return finishSignIn(data.proof);
           });
         })
         .catch(function () {
@@ -580,6 +751,9 @@ const SCRIPT = `
           status.required ? null : el('button', { class: 'danger', type: 'button', text: 'Turn off', onclick: function () { askCode('disable'); } })
         ]) : null,
 
+        el('div', { class: 'divider' }),
+        el('button', { class: 'ghost', type: 'button', text: 'Change my password', onclick: changePassword }),
+
         el('p', { class: 'linkline' }, [
           el('button', { class: 'link', type: 'button', text: 'Sign out', onclick: function () {
             state.jwt = null;
@@ -588,6 +762,47 @@ const SCRIPT = `
         ])
       ]);
     });
+  }
+
+  function changePassword(message) {
+    var current = el('input', { id: 'current', type: 'password', autocomplete: 'current-password' });
+    var next = el('input', { id: 'next', type: 'password', autocomplete: 'new-password' });
+    var confirmation = el('input', { id: 'confirmation', type: 'password', autocomplete: 'new-password' });
+    var submit = el('button', { type: 'submit', text: 'Change it' });
+
+    render([
+      el('form', { onsubmit: function (event) {
+        event.preventDefault();
+        if (next.value !== confirmation.value) return changePassword('Those two passwords are not the same.');
+        busy(submit, true, 'Change it');
+
+        call('/two-factor/account/change-password', {
+          currentPassword: current.value,
+          password: next.value,
+          passwordConfirmation: confirmation.value
+        }, state.jwt).then(function (result) {
+          busy(submit, false, 'Change it');
+          if (!result.ok) return changePassword(messageOf(result, 'That did not work'));
+          // The password change returns a fresh token; keep using it.
+          if (result.payload && result.payload.jwt) state.jwt = result.payload.jwt;
+          return account('Your password is changed.', 'ok');
+        });
+      } }, [
+        note(typeof message === 'string' ? message : null),
+        el('h2', { text: 'Change your password' }),
+        el('label', { for: 'current', text: 'Current password' }),
+        current,
+        el('label', { for: 'next', text: 'New password' }),
+        next,
+        el('label', { for: 'confirmation', text: 'New password again' }),
+        confirmation,
+        submit
+      ]),
+      el('p', { class: 'linkline' }, [
+        el('button', { class: 'link', type: 'button', text: 'Cancel', onclick: function () { account(); } })
+      ])
+    ]);
+    current.focus();
   }
 
   function startEnrolment() {
@@ -668,9 +883,14 @@ const SCRIPT = `
     return Boolean(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
   }
 
-  // A reset link lands here with the code on it.
+  // Three things can land on this page besides somebody opening it.
   var resetCode = params.get('code');
+  var confirmation = params.get('confirmation');
+  var accessToken = params.get('access_token');
+
   if (resetCode) reset(resetCode);
+  else if (confirmation) confirmEmail(confirmation);
+  else if (accessToken) returnFromProvider(accessToken, params.get('provider'));
   else signIn();
 })();
 `;
@@ -689,8 +909,22 @@ const SCRIPT = `
  *
  * The configuration travels on a data attribute for the same reason.
  */
-module.exports = function renderAccountPage({ base, title, logoUrl, allowPasswordReset, redirect }) {
-  const pageConfig = { base, allowPasswordReset: Boolean(allowPasswordReset), redirect: redirect ?? null };
+module.exports = function renderAccountPage({
+  base,
+  title,
+  logoUrl,
+  allowPasswordReset,
+  allowRegistration,
+  providers,
+  redirect,
+}) {
+  const pageConfig = {
+    base,
+    allowPasswordReset: Boolean(allowPasswordReset),
+    allowRegistration: Boolean(allowRegistration),
+    providers: providers ?? [],
+    redirect: redirect ?? null,
+  };
 
   return `<!doctype html>
 <html lang="en">

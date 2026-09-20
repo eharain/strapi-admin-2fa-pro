@@ -61,6 +61,27 @@ module.exports = {
       handler: 'screens.resetPassword',
       config: { auth: false },
     },
+    { method: 'POST', path: '/account/register', handler: 'screens.register', config: { auth: false } },
+    {
+      method: 'POST',
+      path: '/account/email-confirmation',
+      handler: 'screens.emailConfirmation',
+      config: { auth: false },
+    },
+    {
+      method: 'POST',
+      path: '/account/resend-confirmation',
+      handler: 'screens.resendConfirmation',
+      config: { auth: false },
+    },
+    // Signed in, but no permission needed: users-permissions' own controller
+    // refuses anyone the bearer token did not identify.
+    {
+      method: 'POST',
+      path: '/account/change-password',
+      handler: 'screens.changePassword',
+      config: { auth: false },
+    },
 
     { method: 'GET', path: '/me', handler: 'admin-account.status', config: authenticated },
     { method: 'POST', path: '/me/enroll', handler: 'admin-account.enroll', config: authenticated },

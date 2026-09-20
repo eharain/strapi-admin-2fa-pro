@@ -29,8 +29,12 @@ recovery codes for when the phone is gone, and a policy that says who has to use
 - **The same authenticator for users-permissions accounts**, on `POST
   /api/auth/local`, with its own endpoints for your own front end.
 - **Ready-made sign-in pages**, if you would rather not build them: sign in,
-  forgot and reset password, and an authenticator page — and an application can
-  hand its sign-in to them entirely.
+  sign up with email confirmation, forgot and reset password, change password,
+  SSO provider buttons and an authenticator page — and an application can hand
+  its sign-in to them entirely.
+- **SSO is covered too.** A sign-in through Google or GitHub asks for the
+  second factor like any other; it is a different route from the password
+  sign-in, and gating only the password one leaves a way round.
 - **Lockout** after repeated wrong codes, per account rather than per IP.
 
 ## What it looks like
@@ -53,6 +57,13 @@ is available to them as a page you do not have to build:
 | Recovery codes | A refusal that explains itself | Your own account |
 | --- | --- | --- |
 | ![Recovery codes](docs/screenshots/account-recovery-codes.png) | ![A wrong code](docs/screenshots/account-wrong-code.png) | ![Managing your authenticator](docs/screenshots/account-manage.png) |
+
+Turn sign-ups and your SSO providers on and they appear in the same place — a
+provider sign-in asks for the second factor too:
+
+| With SSO and sign-up | Creating an account | Changing a password |
+| --- | --- | --- |
+| ![Sign-in with providers](docs/screenshots/account-sign-in-options.png) | ![Creating an account](docs/screenshots/account-sign-up.png) | ![Changing a password](docs/screenshots/account-change-password.png) |
 
 On a phone the QR can be tapped instead of scanned — the link appears when the
 primary pointer is a finger, so a laptop with a touchscreen is not offered a
@@ -129,6 +140,8 @@ module.exports = ({ env }) => ({
 | `screens.title` | issuer | Heading on the page. |
 | `screens.logoUrl` | `null` | An image above the form. |
 | `screens.allowPasswordReset` | `true` | Offer "forgot your password". |
+| `screens.allowRegistration` | `false` | Offer "create an account". Users-permissions' own `allow_register` still applies on top. |
+| `screens.showProviders` | `true` | Show buttons for the SSO providers users-permissions has enabled. |
 | `screens.redirectOrigins` | `[]` | Origins an application may be sent back to. |
 
 The policy fields can also be changed from **Settings → Two-factor
@@ -276,9 +289,19 @@ screen, this plugin serves them:
 ```
 
 One self-contained document — no build step, no dependencies, light and dark,
-readable on a phone. It covers signing in (with the second factor in the same
-flow), forgetting and resetting a password, setting up an authenticator,
-replacing recovery codes, and turning it off again.
+readable on a phone. It covers:
+
+- signing in, with the second factor in the same flow
+- signing in through an SSO provider, which also asks for the second factor
+- creating an account, confirming the email address, and resending that email
+- forgetting and resetting a password
+- changing a password while signed in
+- setting up an authenticator, replacing recovery codes, turning it off
+
+Registration and the provider buttons appear only where they are switched on —
+registration needs `screens.allowRegistration` *and* users-permissions' own
+`allow_register`, so turning the plugin's switch on cannot open sign-ups on a
+site that had them closed.
 
 Switch it on at **Settings → Two-factor authentication → Policy → Hosted sign-in
 pages**. Until you do, the URL answers 404 — installing a plugin should not put
@@ -362,6 +385,12 @@ surfaces share one implementation without sharing accounts.
 - A proof is spent on first use within the process that issued it. Behind
   several instances that check is best-effort — the worst case is a second
   session for someone who has just proved both factors.
+- **Every way in is gated, not just the password.** A second factor that the
+  password sign-in asks for and an SSO sign-in does not is not a second factor.
+  Both routes are covered: `POST /api/auth/local` before anything is granted,
+  and `GET /api/auth/:provider/callback` by taking back the token, the cookies
+  and the session the provider handler produced. If the plugin cannot find the
+  provider route it says so loudly at boot rather than leaving a quiet gap.
 - The plugin refuses to start if it cannot find the admin login route to
   protect. A security plugin that quietly fails to attach is worse than one that
   is obviously missing.

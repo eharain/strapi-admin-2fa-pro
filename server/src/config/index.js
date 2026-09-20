@@ -70,6 +70,21 @@ const DEFAULTS = {
     logoUrl: null,
     /** Offer "forgot your password". Needs the email plugin configured to work. */
     allowPasswordReset: true,
+
+    /**
+     * Offer "create an account". Off by default, and it is the *second* switch:
+     * users-permissions has its own `allow_register` advanced setting, and both
+     * have to be on. Turning this one on does not open registration on a site
+     * that had it closed.
+     */
+    allowRegistration: false,
+
+    /**
+     * Show the SSO providers users-permissions has enabled. The buttons are
+     * only offered when this is on; the second factor applies to a provider
+     * sign-in either way, since that is gated at the route.
+     */
+    showProviders: true,
     /**
      * Origins an application may be sent back to after signing in, exactly as
      * `https://app.example.com`. Empty means no application may hand its

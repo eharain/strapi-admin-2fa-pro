@@ -2,6 +2,7 @@
 
 const adminLoginGate = require('./gates/admin-login');
 const usersLoginGate = require('./gates/users-login');
+const providerCallbackGate = require('./gates/provider-callback');
 
 /**
  * Wire the two gates into the two login routes.
@@ -58,6 +59,23 @@ module.exports = ({ strapi }) => {
       strapi.log.warn(
         '[two-factor] users-permissions is installed but its POST /auth/local route was not found — ' +
           'two-factor authentication is protecting the admin panel only.'
+      );
+    }
+
+    /**
+     * Signing in through a provider is a different route on the same
+     * controller, and it mints a token of its own. Gating the password and
+     * leaving this open would mean an account with an authenticator could be
+     * reached through Google without one — a way round the second factor that
+     * looks like a working sign-in from every side.
+     */
+    const providerCallback = findRoute(usersPlugin.routes, 'GET', '/auth/:provider/callback');
+    if (providerCallback) {
+      attach(providerCallback, providerCallbackGate({ strapi }));
+    } else {
+      strapi.log.warn(
+        '[two-factor] the users-permissions provider callback route was not found. If this site has SSO ' +
+          'providers enabled, a sign-in through one is NOT covered by the second factor — please open an issue.'
       );
     }
   }

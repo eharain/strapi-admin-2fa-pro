@@ -1,6 +1,6 @@
 {
   "name": "strapi-admin-2fa-pro",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Two-factor authentication for Strapi v5 — TOTP with QR enrolment and recovery codes, enforced on the admin panel login and, optionally, on users-permissions sign-in.",
   "license": "AGPL-3.0-or-later",
   "author": {

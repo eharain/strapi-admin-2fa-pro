@@ -4,6 +4,35 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [semantic versioning](https://semver.org/).
 
+## [0.6.0] — 2026-09-20
+
+### Fixed
+
+- **Both surfaces filed their entry under the same name.** A deployment can
+  hold two independent factors for one person — one for the admin panel, one
+  for their account on the site — and the issuer was derived once, from the
+  host of `admin.url`, for both. An authenticator app has nothing but the
+  issuer and the account name to tell entries apart, so enrolling in both left
+  two identical rows on the phone and no way to know which code the screen in
+  front of you was asking for.
+
+  Each surface is now named separately: `admin.issuer` or `users.issuer` if
+  set, then the shared `issuer`, then the host of `admin.url`. The shared
+  value and the host name the *deployment* rather than a surface, so they
+  still carry the surface with them — `strapi.example.com admin` and
+  `strapi.example.com users`. One name for both is the collision this exists
+  to prevent; only a per-surface `issuer` is taken exactly as written.
+
+  Entries already scanned keep the name they were enrolled under, because the
+  issuer is baked into the QR at enrolment. Rename them in the authenticator
+  app, or re-enrol.
+
+### Changed
+
+- `totp.keyUri(accountName, secret, surface)` and `totp.issuer(surface)` take
+  the surface. Called without one, `issuer()` is still the deployment's name,
+  which is what the hosted account screens are titled with.
+
 ## [0.5.0] — 2026-09-20
 
 ### Fixed

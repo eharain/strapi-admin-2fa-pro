@@ -103,4 +103,48 @@ describe('totp', () => {
     const totp = createStrapi({ config: { 'admin.url': 'https://strapi.example.com/admin' } }).services.totp;
     assert.equal(totp.issuer(), 'strapi.example.com');
   });
+
+  // One deployment, two surfaces, one authenticator app. Named alike, the two
+  // entries are indistinguishable on the phone and neither tells you which
+  // code the screen in front of you wants.
+  it('names the admin panel and the site apart, so one phone can hold both', () => {
+    const totp = createStrapi({ config: { 'admin.url': 'https://strapi.example.com/admin' } }).services.totp;
+
+    assert.equal(totp.issuer('admin'), 'strapi.example.com admin');
+    assert.equal(totp.issuer('user'), 'strapi.example.com users');
+    assert.notEqual(totp.issuer('admin'), totp.issuer('user'));
+  });
+
+  it('carries the surface even when one issuer is configured for the deployment', () => {
+    const totp = createStrapi({ config: { 'plugin::two-factor.issuer': 'Acme' } }).services.totp;
+
+    // A single configured name is the deployment's, not a surface's - taking it
+    // verbatim for both would put the collision straight back.
+    assert.equal(totp.issuer('admin'), 'Acme admin');
+    assert.equal(totp.issuer('user'), 'Acme users');
+  });
+
+  it('takes a per-surface issuer exactly as written', () => {
+    const totp = createStrapi({
+      config: {
+        'plugin::two-factor.issuer': 'Acme',
+        'plugin::two-factor.admin.issuer': 'Acme Strapi',
+        'plugin::two-factor.users.issuer': 'Acme console',
+      },
+    }).services.totp;
+
+    assert.equal(totp.issuer('admin'), 'Acme Strapi');
+    assert.equal(totp.issuer('user'), 'Acme console');
+    // The screens are titled with the deployment, which has not changed.
+    assert.equal(totp.issuer(), 'Acme');
+  });
+
+  it('puts the surface name in the key URI the app scans', () => {
+    const totp = createStrapi({
+      config: { 'plugin::two-factor.admin.issuer': 'Acme Strapi' },
+    }).services.totp;
+
+    const uri = totp.keyUri('someone@example.com', totp.generateSecret(), 'admin');
+    assert.match(decodeURIComponent(uri), /issuer=Acme Strapi/);
+  });
 });

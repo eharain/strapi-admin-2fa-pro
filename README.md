@@ -100,19 +100,24 @@ module.exports = ({ env }) => ({
       // Strongly recommended in production — see "Key material" below.
       encryptionKey: env('TWO_FACTOR_KEY'),
 
-      // What the authenticator app lists the entry under.
-      // Defaults to the host from admin.url, so two deployments are told apart.
+      // The deployment's name. Defaults to the host from admin.url, so two
+      // deployments are told apart. Each surface is then named after it -
+      // 'strapi.example.com admin' and 'strapi.example.com users' - because
+      // one person may hold a factor for both and an authenticator app has
+      // nothing but this name to tell the two entries apart.
       issuer: 'strapi.example.com',
 
       admin: {
         enforce: 'optional',        // or 'required'
         enforceRoles: [],           // e.g. ['strapi-super-admin']
         gracePeriodDays: 0,
+        issuer: 'Acme Strapi',      // names this surface exactly, if you'd rather
       },
 
       users: {
         enabled: true,              // the users-permissions surface
         enforce: 'optional',
+        issuer: 'Acme console',     // the app your users think they are signing in to
       },
     },
   },
@@ -122,7 +127,7 @@ module.exports = ({ env }) => ({
 | Option | Default | What it does |
 | --- | --- | --- |
 | `encryptionKey` | `null` | Key material for factor secrets and tokens. Falls back to `admin.secrets.encryptionKey`, then `admin.auth.secret`. |
-| `issuer` | host of `admin.url` | The name your authenticator app shows. |
+| `issuer` | host of `admin.url` | The deployment's name. Each surface is filed under it plus the surface, so the two never collide. |
 | `digits` | `6` | 6, 7 or 8. Anything but 6 is spelled out in the QR. |
 | `period` | `30` | Seconds per code. |
 | `driftSeconds` | `30` | Clock skew tolerated either side. |
@@ -134,10 +139,12 @@ module.exports = ({ env }) => ({
 | `admin.enforce` | `'optional'` | `'required'` makes every administrator enrol. |
 | `admin.enforceRoles` | `[]` | Role codes that must enrol whatever `enforce` says. |
 | `admin.gracePeriodDays` | `0` | Days before enforcement bites. |
+| `admin.issuer` | `<issuer> admin` | Names the admin panel's entry exactly as written. |
 | `users.enabled` | `true` | Whether users-permissions sign-in is gated at all. |
 | `users.enforce` | `'optional'` | As above, for site accounts. |
+| `users.issuer` | `<issuer> users` | Names the site's entry exactly as written. |
 | `screens.enabled` | `false` | Serve the hosted account pages. Off until you say so. |
-| `screens.title` | issuer | Heading on the page. |
+| `screens.title` | `issuer` | Heading on the page — the deployment's name, not a surface's. |
 | `screens.logoUrl` | `null` | An image above the form. |
 | `screens.allowPasswordReset` | `true` | Offer "forgot your password". |
 | `screens.allowRegistration` | `false` | Offer "create an account". Users-permissions' own `allow_register` still applies on top. |

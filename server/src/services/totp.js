@@ -23,13 +23,17 @@ module.exports = ({ strapi }) => {
     digits: read('digits', 6),
   });
 
-  const issuer = () => {
+  // Which config block names a surface. `subjectType` is the plugin's own
+  // vocabulary ('admin' | 'user'); the config blocks read as English.
+  const SURFACE_KEY = { admin: 'admin', user: 'users' };
+
+  // The deployment, named. The issuer is what the authenticator app lists the
+  // entry under, so it should say which deployment this is — two Strapis both
+  // called "Strapi" on one phone are indistinguishable.
+  const deploymentName = () => {
     const configured = read('issuer', null);
     if (configured) return String(configured);
 
-    // The issuer is what the authenticator app lists the entry under, so it
-    // should say which deployment this is — two Strapis both called "Strapi"
-    // on one phone are indistinguishable.
     const url = strapi.config.get('admin.url') || strapi.config.get('server.url') || '';
     try {
       if (url) return new URL(url, 'http://localhost').host || 'Strapi';
@@ -37,6 +41,35 @@ module.exports = ({ strapi }) => {
       /* fall through to the default */
     }
     return 'Strapi';
+  };
+
+  /**
+   * What the authenticator app lists one surface's entry under.
+   *
+   * One deployment can hold two independent factors for the same person — one
+   * for the admin panel, one for their account on the site — and an
+   * authenticator has nothing but the issuer and the account name to tell two
+   * rows apart. Named alike they are two identical entries, with no way to
+   * know which code is being asked for. So each surface is named separately.
+   *
+   * Per surface: `admin.issuer` or `users.issuer`, then the shared `issuer`,
+   * then the host of the deployment's admin URL. The shared value and the host
+   * name the *deployment*, not a surface, so they still carry the surface with
+   * them — one name for both is the collision this exists to prevent. Only a
+   * per-surface `issuer` is taken exactly as written, because an operator who
+   * names a surface has said what they want it called.
+   *
+   * Called with no surface it is the deployment's name, which is what the
+   * account screens are titled with.
+   */
+  const issuer = (surface = null) => {
+    const key = SURFACE_KEY[surface];
+    if (!key) return deploymentName();
+
+    const scoped = read(`${key}.issuer`, null);
+    if (scoped) return String(scoped);
+
+    return `${deploymentName()} ${key}`;
   };
 
   return {
@@ -51,9 +84,12 @@ module.exports = ({ strapi }) => {
     /** A fresh base32 secret for a new enrolment. */
     generateSecret: () => generateSecret(),
 
-    /** The otpauth:// URI an authenticator app scans — or opens, when tapped on a phone. */
-    keyUri(accountName, secret) {
-      return generateURI({ ...params(), secret, label: accountName, issuer: issuer() });
+    /**
+     * The otpauth:// URI an authenticator app scans — or opens, when tapped on
+     * a phone. `surface` decides the name the entry is filed under.
+     */
+    keyUri(accountName, secret, surface = null) {
+      return generateURI({ ...params(), secret, label: accountName, issuer: issuer(surface) });
     },
 
     /**

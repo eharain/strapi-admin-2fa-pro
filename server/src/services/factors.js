@@ -126,7 +126,7 @@ module.exports = ({ strapi }) => {
       if (existing) await strapi.db.query(FACTOR).delete({ where: { id: existing.id } });
 
       const secret = totp().generateSecret();
-      const otpauthUri = totp().keyUri(accountName || String(subjectId), secret);
+      const otpauthUri = totp().keyUri(accountName || String(subjectId), secret, subjectType);
 
       await strapi.db.query(FACTOR).create({
         data: {
@@ -148,7 +148,7 @@ module.exports = ({ strapi }) => {
         qrDataUrl: await QRCode.toDataURL(otpauthUri, { margin: 1, width: 240, errorCorrectionLevel: 'M' }),
         digits: totp().digits,
         period: totp().period,
-        issuer: totp().issuer(),
+        issuer: totp().issuer(subjectType),
         accountName,
       };
     },

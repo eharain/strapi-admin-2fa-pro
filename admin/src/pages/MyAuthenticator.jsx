@@ -4,11 +4,12 @@ import { Alert, Badge, Box, Button, Divider, Field, Flex, Loader, Typography } f
 
 import { endpoints, errorMessage, unwrap } from '../api';
 
-const isTouchDevice = () => {
-  if (typeof window === 'undefined') return false;
-  if (window.matchMedia && window.matchMedia('(pointer: coarse)').matches) return true;
-  return Number(window.navigator?.maxTouchPoints) > 0;
-};
+// Is the *primary* pointer a finger? `maxTouchPoints` is not the question: a
+// laptop with a touchscreen reports ten of them and still wants a mouse, and
+// would be shown a link that opens nothing.
+const isTouchDevice = () =>
+  typeof window !== 'undefined' &&
+  Boolean(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
 
 /**
  * Everyone's own page: set up an authenticator, keep the recovery codes, take

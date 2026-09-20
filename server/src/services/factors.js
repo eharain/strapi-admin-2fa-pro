@@ -252,9 +252,11 @@ module.exports = ({ strapi }) => {
 
     /** Every confirmed factor, keyed by subject id — for the admin overview. */
     async enrolledMap(subjectType) {
+      // No `limit`, and not `limit: -1`: the query engine passes that straight
+      // through to the database, which refuses a negative LIMIT. Leaving it out
+      // is what returns every row.
       const rows = await strapi.db.query(FACTOR).findMany({
         where: { subjectType, confirmedAt: { $notNull: true } },
-        limit: -1,
       });
       return new Map(rows.map((row) => [String(row.subjectId), row]));
     },

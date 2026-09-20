@@ -38,6 +38,30 @@ module.exports = {
       config: { auth: false },
     },
 
+    /**
+     * The hosted account pages, for a site whose people sign in through
+     * users-permissions. Unauthenticated by definition — this is the page
+     * somebody signs in *on*. They answer 404 until an administrator switches
+     * them on, so installing the plugin does not put a sign-in page on the
+     * internet by itself.
+     */
+    { method: 'GET', path: '/account', handler: 'screens.page', config: { auth: false } },
+    { method: 'GET', path: '/account/app.js', handler: 'screens.script', config: { auth: false } },
+    { method: 'GET', path: '/account/app.css', handler: 'screens.styles', config: { auth: false } },
+    { method: 'POST', path: '/account/login', handler: 'screens.login', config: { auth: false } },
+    {
+      method: 'POST',
+      path: '/account/forgot-password',
+      handler: 'screens.forgotPassword',
+      config: { auth: false },
+    },
+    {
+      method: 'POST',
+      path: '/account/reset-password',
+      handler: 'screens.resetPassword',
+      config: { auth: false },
+    },
+
     { method: 'GET', path: '/me', handler: 'admin-account.status', config: authenticated },
     { method: 'POST', path: '/me/enroll', handler: 'admin-account.enroll', config: authenticated },
     { method: 'POST', path: '/me/confirm', handler: 'admin-account.confirm', config: authenticated },

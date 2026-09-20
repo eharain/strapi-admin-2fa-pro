@@ -52,6 +52,32 @@ const DEFAULTS = {
     enabled: true,
     enforce: 'optional',
   },
+
+  /**
+   * Ready-made sign-in pages for users-permissions accounts, served by the
+   * plugin itself: sign in with the second factor built in, forgot and reset
+   * password, and a page where somebody manages their own authenticator.
+   *
+   * Off by default, and deliberately so. Serving a sign-in page changes what a
+   * deployment exposes to the internet, and that is not a thing to switch on
+   * for somebody because they installed a plugin.
+   */
+  screens: {
+    enabled: false,
+    /** Heading on the page. Defaults to the issuer, which defaults to the host. */
+    title: null,
+    /** An image URL shown above the form. Same-origin or a full URL. */
+    logoUrl: null,
+    /** Offer "forgot your password". Needs the email plugin configured to work. */
+    allowPasswordReset: true,
+    /**
+     * Origins an application may be sent back to after signing in, exactly as
+     * `https://app.example.com`. Empty means no application may hand its
+     * sign-in to these pages — which is the safe default, because an
+     * unchecked return address is how a token ends up somewhere else.
+     */
+    redirectOrigins: [],
+  },
 };
 
 module.exports = {

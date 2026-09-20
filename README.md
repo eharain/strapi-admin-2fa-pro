@@ -28,7 +28,41 @@ recovery codes for when the phone is gone, and a policy that says who has to use
   than whenever those sessions happen to expire.
 - **The same authenticator for users-permissions accounts**, on `POST
   /api/auth/local`, with its own endpoints for your own front end.
+- **Ready-made sign-in pages**, if you would rather not build them: sign in,
+  forgot and reset password, and an authenticator page — and an application can
+  hand its sign-in to them entirely.
 - **Lockout** after repeated wrong codes, per account rather than per IP.
+
+## What it looks like
+
+In the admin panel, everyone manages their own authenticator and whoever holds
+the permission sets the policy and sees who is actually covered:
+
+| An administrator's own page | The policy, and who it covers |
+| --- | --- |
+| ![My authenticator](docs/screenshots/admin-my-authenticator.png) | ![The policy page](docs/screenshots/admin-policy.png) |
+
+Signing in asks for a code after the password, without leaving the sign-in
+screen. If your site's people sign in through users-permissions, the same thing
+is available to them as a page you do not have to build:
+
+| Signing in | The second factor | Setting one up |
+| --- | --- | --- |
+| ![The sign-in page](docs/screenshots/account-sign-in.png) | ![The code prompt](docs/screenshots/account-two-factor.png) | ![The QR at sign-in](docs/screenshots/account-enrolment.png) |
+
+| Recovery codes | A refusal that explains itself | Your own account |
+| --- | --- | --- |
+| ![Recovery codes](docs/screenshots/account-recovery-codes.png) | ![A wrong code](docs/screenshots/account-wrong-code.png) | ![Managing your authenticator](docs/screenshots/account-manage.png) |
+
+On a phone the QR can be tapped instead of scanned — the link appears when the
+primary pointer is a finger, so a laptop with a touchscreen is not offered a
+link that opens nothing:
+
+<img src="docs/screenshots/account-enrolment-mobile.png" alt="Enrolment on a phone" width="300">
+
+The rest are in [docs/screenshots](docs/screenshots). They are captured from a
+running Strapi by `npm run screenshots`, with stubbed API answers rather than a
+real account — documentation should not contain somebody's data.
 
 ## Install
 
@@ -91,6 +125,11 @@ module.exports = ({ env }) => ({
 | `admin.gracePeriodDays` | `0` | Days before enforcement bites. |
 | `users.enabled` | `true` | Whether users-permissions sign-in is gated at all. |
 | `users.enforce` | `'optional'` | As above, for site accounts. |
+| `screens.enabled` | `false` | Serve the hosted account pages. Off until you say so. |
+| `screens.title` | issuer | Heading on the page. |
+| `screens.logoUrl` | `null` | An image above the form. |
+| `screens.allowPasswordReset` | `true` | Offer "forgot your password". |
+| `screens.redirectOrigins` | `[]` | Origins an application may be sent back to. |
 
 The policy fields can also be changed from **Settings → Two-factor
 authentication → Policy** without a deploy. The config file is the starting
@@ -225,6 +264,62 @@ if (res.status === 401) {
   }
 }
 ```
+
+## Hosted account pages
+
+If your site's people sign in through users-permissions and you would rather not
+build a sign-in page, a password reset, an authenticator setup and a recovery-code
+screen, this plugin serves them:
+
+```
+/two-factor/account
+```
+
+One self-contained document — no build step, no dependencies, light and dark,
+readable on a phone. It covers signing in (with the second factor in the same
+flow), forgetting and resetting a password, setting up an authenticator,
+replacing recovery codes, and turning it off again.
+
+Switch it on at **Settings → Two-factor authentication → Policy → Hosted sign-in
+pages**. Until you do, the URL answers 404 — installing a plugin should not put
+a sign-in page on the internet.
+
+Point your users-permissions **reset password page** setting at the same URL and
+the emailed link lands on it with its `?code=`, which the page picks up.
+
+Sign-in, forgot and reset are handled by users-permissions' *own controller*, so
+these pages send exactly the email your site is already configured to send, obey
+your own registration and confirmation settings, and keep working where
+`/api/auth/*` has been closed off. The second factor is the same gate the API
+uses, not a second copy of it.
+
+### Signing an application in
+
+An application can hand its sign-in to these pages rather than building one:
+
+```
+https://cms.example.com/two-factor/account?redirect_uri=https://app.example.com/callback&state=xyz
+```
+
+After the password and the second factor, the browser is sent back to
+
+```
+https://app.example.com/callback#token=<jwt>&state=xyz
+```
+
+The token is in the **fragment**, which is not sent to a server and does not
+reach a log or a `Referer` header. Read it, use it as the bearer for your API
+calls, and clear the fragment.
+
+The return address is checked **on the server** against
+`screens.redirectOrigins`, an exact list of origins. An address that is not on
+the list is refused with a message saying so, rather than quietly ignored — a
+silently dropped handover looks to a developer exactly like a broken login.
+Leave the list empty and no application can use the pages at all, which is the
+default.
+
+`state` is passed back untouched. Use it the way you would with OAuth: generate
+it, keep it, and refuse a callback that comes back with the wrong one.
 
 ## Getting locked out
 

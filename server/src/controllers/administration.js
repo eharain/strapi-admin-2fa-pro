@@ -26,7 +26,6 @@ module.exports = ({ strapi }) => {
     const admins = await strapi.db.query('admin::user').findMany({
       where: { isActive: true },
       populate: { roles: true },
-      limit: -1,
     });
 
     return admins.map((user) => {
@@ -54,7 +53,7 @@ module.exports = ({ strapi }) => {
   return {
     settings: handled(async (ctx) => {
       const [config, admins] = await Promise.all([settings().get(), summarise()]);
-      const roles = await strapi.db.query('admin::role').findMany({ limit: -1 });
+      const roles = await strapi.db.query('admin::role').findMany();
 
       ctx.body = {
         data: {
@@ -116,7 +115,7 @@ module.exports = ({ strapi }) => {
       }
 
       const callerId = String(ctx.state.user?.id ?? '');
-      const admins = await strapi.db.query('admin::user').findMany({ where: { isActive: true }, limit: -1 });
+      const admins = await strapi.db.query('admin::user').findMany({ where: { isActive: true } });
 
       let revoked = 0;
       for (const user of admins) {

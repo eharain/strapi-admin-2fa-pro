@@ -5,6 +5,7 @@ const account = require('./account');
 module.exports = {
   challenge: require('./challenge'),
   administration: require('./administration'),
+  screens: require('./screens'),
 
   /** The signed-in admin acting on their own account. */
   'admin-account': ({ strapi }) => account({ strapi, subjectType: 'admin' }),

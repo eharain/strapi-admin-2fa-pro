@@ -1,6 +1,6 @@
 {
   "name": "strapi-admin-2fa-pro",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Two-factor authentication for Strapi v5 — TOTP with QR enrolment and recovery codes, enforced on the admin panel login and, optionally, on users-permissions sign-in.",
   "license": "AGPL-3.0-or-later",
   "author": {
@@ -75,7 +75,8 @@
   },
   "scripts": {
     "prepare": "git config core.hooksPath .githooks || exit 0",
-    "test": "node --test \"tests/*.test.js\""
+    "test": "node --test \"tests/*.test.js\"",
+    "screenshots": "node tools/capture-screenshots.js"
   },
   "dependencies": {
     "otplib": "^13.5.0",
@@ -89,5 +90,8 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "playwright": "^1.63.0"
   }
 }

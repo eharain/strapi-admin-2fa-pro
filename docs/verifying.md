@@ -89,6 +89,22 @@ curl -s -X POST http://localhost:1337/admin/login \
 `200`, with the ordinary `data.token` and `data.user`. That response comes from
 Strapi's own login handler, untouched.
 
+## The administration page
+
+Worth its own check, because it is the one screen a working sign-in does not
+exercise — the second factor can be entirely healthy while this is broken:
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' \
+  -H "Authorization: Bearer $TOKEN" \
+  http://localhost:1337/two-factor/administration
+```
+
+`200`. Anything else and **Settings → Two-factor authentication → Policy** will
+show "Internal Server Error" with a spinner behind it, while every sign-in keeps
+working perfectly. Open the page as well as calling the endpoint: a 500 there is
+easy to miss precisely because nothing else is affected.
+
 ## In the browser
 
 Sign out and sign in again at `/admin`. After the password, the code prompt

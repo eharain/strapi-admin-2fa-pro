@@ -4,6 +4,63 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [semantic versioning](https://semver.org/).
 
+## [0.3.0] — 2026-09-20
+
+### Added
+
+- **Hosted account pages** at `/two-factor/account`, for a site whose people
+  sign in through users-permissions: sign in with the second factor built in,
+  forgot and reset password, and a page where somebody sets up, replaces or
+  removes their own authenticator. One self-contained document — no build step,
+  no dependencies, light and dark.
+
+  Sign-in, forgot and reset call users-permissions' **own controller**, so they
+  send exactly the email the site is already configured to send and keep working
+  where `/api/auth/*` has been closed off. The second factor is the same gate
+  the API uses, not a second copy of it.
+
+- **Signing an application in.** `/two-factor/account?redirect_uri=…&state=…`
+  hands the token back in the URL fragment, so an application can use these
+  pages instead of building its own sign-in. The return address is checked
+  against `screens.redirectOrigins` **on the server** — the page never decides
+  where a token may go — and an address that is not on the list is refused
+  loudly rather than quietly ignored.
+
+- Settings for all of it under **Settings → Two-factor authentication →
+  Policy**: whether the pages are served at all, the heading and logo, whether
+  password reset is offered, and the allowed origins.
+
+### Fixed
+
+- **The Policy page never loaded.** `strapi.db.query()` passes `limit: -1`
+  straight to the database, which refuses a negative `LIMIT`, so
+  `GET /two-factor/administration` answered 500 and the page showed "Internal
+  Server Error". Leaving the limit out is what returns every row. The same
+  mistake was in "end all other sessions".
+
+  Nothing about signing in was affected, which is exactly why it survived: every
+  end-to-end check of the second factor passed while this screen was broken.
+  There is a check for it in [docs/verifying.md](docs/verifying.md) now.
+
+- **The "open in your authenticator app" link showed on desktops.** It was
+  offered whenever `navigator.maxTouchPoints > 0`, and a laptop with a
+  touchscreen reports ten — so it appeared beside the QR on machines where it
+  opens nothing. It now asks whether the *primary* pointer is a finger.
+
+### Notes
+
+- The pages are **off by default** and answer 404 until switched on. Installing
+  a plugin should not put a sign-in page on the internet.
+- They are served with `X-Frame-Options: DENY`, `Cache-Control: no-store` and
+  `Referrer-Policy: no-referrer`, and are marked `noindex`.
+- Neither the page's script nor its styles are inline. Strapi's default
+  `script-src 'self'` blocks inline script, so an inline version rendered its
+  heading and then did nothing at all. They are served as their own same-origin
+  files, which the policy already allows — relaxing the headers on a sign-in
+  page would have been the wrong way round.
+- `npm run screenshots` captures [docs/screenshots](docs/screenshots) from a
+  running instance, with stubbed API answers rather than a real account.
+
 ## [0.2.0] — 2026-09-20
 
 ### Added

@@ -21,6 +21,23 @@ const OVERRIDABLE = {
   'admin.gracePeriodDays': (v) => Number.isInteger(v) && v >= 0 && v <= 365,
   'users.enabled': (v) => typeof v === 'boolean',
   'users.enforce': (v) => ['optional', 'required'].includes(v),
+  'screens.enabled': (v) => typeof v === 'boolean',
+  'screens.title': (v) => v === null || (typeof v === 'string' && v.length <= 120),
+  'screens.logoUrl': (v) => v === null || (typeof v === 'string' && v.length <= 2000),
+  'screens.allowPasswordReset': (v) => typeof v === 'boolean',
+  'screens.redirectOrigins': (v) =>
+    Array.isArray(v) &&
+    v.every((origin) => {
+      if (typeof origin !== 'string' || origin.length > 2000) return false;
+      try {
+        // An origin and nothing else: a path or a wildcard here would widen
+        // where a token may be sent without anybody meaning it to.
+        const parsed = new URL(origin);
+        return `${parsed.protocol}//${parsed.host}` === origin.replace(/\/$/, '');
+      } catch {
+        return false;
+      }
+    }),
 };
 
 const get = (object, path) => path.split('.').reduce((acc, key) => (acc == null ? acc : acc[key]), object);
@@ -48,6 +65,13 @@ module.exports = ({ strapi }) => {
     users: {
       enabled: strapi.config.get(`plugin::${PLUGIN_ID}.users.enabled`, true),
       enforce: strapi.config.get(`plugin::${PLUGIN_ID}.users.enforce`, 'optional'),
+    },
+    screens: {
+      enabled: strapi.config.get(`plugin::${PLUGIN_ID}.screens.enabled`, false),
+      title: strapi.config.get(`plugin::${PLUGIN_ID}.screens.title`, null),
+      logoUrl: strapi.config.get(`plugin::${PLUGIN_ID}.screens.logoUrl`, null),
+      allowPasswordReset: strapi.config.get(`plugin::${PLUGIN_ID}.screens.allowPasswordReset`, true),
+      redirectOrigins: strapi.config.get(`plugin::${PLUGIN_ID}.screens.redirectOrigins`, []),
     },
   });
 

@@ -14,6 +14,7 @@ import {
   Table,
   Tbody,
   Td,
+  Textarea,
   Th,
   Thead,
   Tr,
@@ -230,6 +231,99 @@ const Policy = () => {
                 </SingleSelect>
               </Field.Root>
             </Box>
+          </Box>
+
+          <Box background="neutral0" padding={6} shadow="tableShadow" hasRadius>
+            <Typography variant="delta">Hosted sign-in pages</Typography>
+            <Box paddingTop={2} paddingBottom={4}>
+              <Typography variant="pi" textColor="neutral600">
+                A ready-made sign-in, password reset and authenticator page for website accounts, served by
+                this plugin at <code>/two-factor/account</code>. Off by default: switching it on puts a
+                sign-in page on whatever this Strapi is reachable at.
+              </Typography>
+            </Box>
+
+            <Flex gap={4} alignItems="flex-end" wrap="wrap">
+              <Box width="200px">
+                <Field.Root name="screens-enabled">
+                  <Field.Label>Pages</Field.Label>
+                  <SingleSelect
+                    value={draft.screens.enabled ? 'on' : 'off'}
+                    onChange={(value) => patch('screens.enabled', value === 'on')}
+                  >
+                    <SingleSelectOption value="off">Off</SingleSelectOption>
+                    <SingleSelectOption value="on">Served</SingleSelectOption>
+                  </SingleSelect>
+                </Field.Root>
+              </Box>
+
+              <Box width="200px">
+                <Field.Root name="screens-reset">
+                  <Field.Label>Password reset</Field.Label>
+                  <SingleSelect
+                    value={draft.screens.allowPasswordReset ? 'on' : 'off'}
+                    onChange={(value) => patch('screens.allowPasswordReset', value === 'on')}
+                  >
+                    <SingleSelectOption value="on">Offered</SingleSelectOption>
+                    <SingleSelectOption value="off">Not offered</SingleSelectOption>
+                  </SingleSelect>
+                </Field.Root>
+              </Box>
+
+              <Box width="240px">
+                <Field.Root name="screens-title" hint="Defaults to the authenticator issuer">
+                  <Field.Label>Heading</Field.Label>
+                  <Field.Input
+                    value={draft.screens.title ?? ''}
+                    onChange={(event) => patch('screens.title', event.target.value || null)}
+                  />
+                  <Field.Hint />
+                </Field.Root>
+              </Box>
+
+              <Box width="300px">
+                <Field.Root name="screens-logo">
+                  <Field.Label>Logo URL</Field.Label>
+                  <Field.Input
+                    value={draft.screens.logoUrl ?? ''}
+                    onChange={(event) => patch('screens.logoUrl', event.target.value || null)}
+                  />
+                </Field.Root>
+              </Box>
+            </Flex>
+
+            <Box paddingTop={4}>
+              <Field.Root
+                name="screens-origins"
+                hint="One origin per line, e.g. https://app.example.com. Empty means no application may hand its sign-in to these pages."
+              >
+                <Field.Label>Applications allowed to receive a sign-in</Field.Label>
+                <Textarea
+                  value={(draft.screens.redirectOrigins ?? []).join('\n')}
+                  onChange={(event) =>
+                    patch(
+                      'screens.redirectOrigins',
+                      event.target.value
+                        .split('\n')
+                        .map((line) => line.trim())
+                        .filter(Boolean)
+                    )
+                  }
+                />
+                <Field.Hint />
+              </Field.Root>
+            </Box>
+
+            {draft.screens.enabled ? (
+              <Box paddingTop={4}>
+                <Button
+                  variant="tertiary"
+                  onClick={() => window.open(`${window.location.origin}/two-factor/account`, '_blank')}
+                >
+                  Open the sign-in page
+                </Button>
+              </Box>
+            ) : null}
           </Box>
 
           <Box background="neutral0" padding={6} shadow="tableShadow" hasRadius>

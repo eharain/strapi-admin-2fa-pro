@@ -1,6 +1,6 @@
 {
   "name": "strapi-admin-2fa-pro",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Two-factor authentication for Strapi v5 — TOTP with QR enrolment and recovery codes, enforced on the admin panel login and, optionally, on users-permissions sign-in.",
   "license": "AGPL-3.0-or-later",
   "author": {
@@ -10,12 +10,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/tech-style/strapi-admin-2fa-pro.git"
+    "url": "git+https://github.com/eharain/strapi-admin-2fa-pro.git"
   },
   "bugs": {
-    "url": "https://github.com/tech-style/strapi-admin-2fa-pro/issues"
+    "url": "https://github.com/eharain/strapi-admin-2fa-pro/issues"
   },
-  "homepage": "https://github.com/tech-style/strapi-admin-2fa-pro#readme",
+  "homepage": "https://github.com/eharain/strapi-admin-2fa-pro#readme",
   "publishConfig": {
     "access": "public",
     "registry": "https://registry.npmjs.org/"

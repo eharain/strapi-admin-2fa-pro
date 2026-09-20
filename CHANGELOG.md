@@ -4,6 +4,19 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [semantic versioning](https://semver.org/).
 
+## [0.4.1] — 2026-09-20
+
+### Fixed
+
+- **The repository, issues and homepage links pointed at an account that is not
+  ours.** `github.com/tech-style` belongs to somebody else, so the package page
+  sent people to a stranger's profile and resolved this README's images against
+  it. They point at `github.com/eharain/strapi-admin-2fa-pro`, which is where
+  the source actually is.
+
+  No code changed. The commercial licence and security contact still read
+  tech-style.co, which is the company's own domain and is correct.
+
 ## [0.4.0] — 2026-09-20
 
 ### Security

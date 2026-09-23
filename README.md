@@ -1,3 +1,5 @@
+<img src="docs/logo.png" alt="" width="96" height="96">
+
 # Two-Factor Auth Pro for Strapi 5
 
 Two-factor authentication (TOTP) for the **Strapi admin panel** — and, optionally,

@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-labelledby="title">
+  <title id="title">Two-Factor Auth Pro</title>
+  <rect width="512" height="512" rx="112" fill="#4945FF"/>
+  <path d="M256 84 L398 138 V246 C398 338 338 404 256 434 C174 404 114 338 114 246 V138 Z"
+        fill="none" stroke="#FFFFFF" stroke-width="28" stroke-linejoin="round"/>
+  <g fill="#FFFFFF">
+    <circle cx="204" cy="232" r="17"/>
+    <circle cx="256" cy="232" r="17"/>
+    <circle cx="308" cy="232" r="17"/>
+    <circle cx="204" cy="294" r="17"/>
+    <circle cx="256" cy="294" r="17"/>
+    <circle cx="308" cy="294" r="17"/>
+  </g>
+</svg>

@@ -105,6 +105,38 @@ show "Internal Server Error" with a spinner behind it, while every sign-in keeps
 working perfectly. Open the page as well as calling the endpoint: a 500 there is
 easy to miss precisely because nothing else is affected.
 
+## Resetting somebody else's authenticator
+
+The claim to check is that a password — or a stolen panel session — is not
+enough to take away someone's second factor. With `$TOKEN` from an
+administrator who has their own authenticator, and `$ID` a website account
+that has one:
+
+```bash
+# No code: refused, and nothing changes.
+curl -s -o /dev/null -w '%{http_code}\n' -X POST \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{}' http://localhost:1337/two-factor/administration/users/$ID/reset
+# 400
+
+# A wrong code: refused with 403 — never 401, which the panel would resend.
+curl -s -o /dev/null -w '%{http_code}\n' -X POST \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"code":"000000"}' http://localhost:1337/two-factor/administration/users/$ID/reset
+# 403
+
+# Your own current code: the authenticator is gone.
+curl -s -X POST \
+  -H "Authorization: Bearer $TOKEN" -H 'Content-Type: application/json' \
+  -d '{"code":"<from your app>"}' http://localhost:1337/two-factor/administration/users/$ID/reset
+# {"data":{"id":…,"enrolled":false,"sessionsEnded":false}}
+```
+
+Then `GET /two-factor/administration/users/$ID` reports `enrolled: false`, and
+the person can connect a new authenticator straight away. The same three answers
+come back from `/administration/admins/:id/reset` for another administrator —
+and `400` if the id is your own.
+
 ## In the browser
 
 Sign out and sign in again at `/admin`. After the password, the code prompt

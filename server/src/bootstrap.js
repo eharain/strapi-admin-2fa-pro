@@ -24,6 +24,20 @@ const RBAC_ACTIONS = [
     uid: 'admins.manage',
     pluginName: 'two-factor',
   },
+  {
+    section: 'settings',
+    category: 'two-factor authentication',
+    displayName: 'See website accounts',
+    uid: 'users.read',
+    pluginName: 'two-factor',
+  },
+  {
+    section: 'settings',
+    category: 'two-factor authentication',
+    displayName: 'Reset and unlock website accounts',
+    uid: 'users.manage',
+    pluginName: 'two-factor',
+  },
 ];
 
 module.exports = async ({ strapi }) => {

@@ -23,6 +23,10 @@ module.exports = ({ strapi, subjectType }) => {
   const factors = () => getService(strapi, 'factors');
   const policy = () => getService(strapi, 'policy');
 
+  // Admin routes sit behind a panel session, where a 401 makes the panel refresh
+  // and resend the request — see utils/respond.js. The users surface keeps 401.
+  const respond = (work) => handled(work, { insideSession: subjectType === 'admin' });
+
   const subjectOf = (ctx) => {
     const user = ctx.state.user;
     if (!user || !user.id) throw new UnauthorizedError('Sign in first');
@@ -45,7 +49,7 @@ module.exports = ({ strapi, subjectType }) => {
   };
 
   return {
-    status: handled(async (ctx) => {
+    status: respond(async (ctx) => {
       const { subjectId, user } = subjectOf(ctx);
       const [status, decision] = await Promise.all([
         factors().status({ subjectType, subjectId }),
@@ -63,7 +67,7 @@ module.exports = ({ strapi, subjectType }) => {
       };
     }),
 
-    enroll: handled(async (ctx) => {
+    enroll: respond(async (ctx) => {
       const { subjectId, accountName } = subjectOf(ctx);
       ctx.body = {
         data: await factors().startEnrolment({
@@ -75,7 +79,7 @@ module.exports = ({ strapi, subjectType }) => {
       };
     }),
 
-    confirm: handled(async (ctx) => {
+    confirm: respond(async (ctx) => {
       const { subjectId } = subjectOf(ctx);
       const { recoveryCodes } = await factors().confirmEnrolment({
         subjectType,
@@ -85,7 +89,7 @@ module.exports = ({ strapi, subjectType }) => {
       ctx.body = { data: { enrolled: true, recoveryCodes } };
     }),
 
-    disable: handled(async (ctx) => {
+    disable: respond(async (ctx) => {
       const { subjectId, user } = subjectOf(ctx);
 
       const decision = await decisionFor(user);
@@ -107,7 +111,7 @@ module.exports = ({ strapi, subjectType }) => {
       ctx.body = { data: { enrolled: false } };
     }),
 
-    recoveryCodes: handled(async (ctx) => {
+    recoveryCodes: respond(async (ctx) => {
       const { subjectId } = subjectOf(ctx);
       await factors().verifyCode({ subjectType, subjectId, code: requireCode(ctx), allowRecovery: false });
       ctx.body = { data: await factors().regenerateRecoveryCodes({ subjectType, subjectId }) };
@@ -126,7 +130,7 @@ module.exports = ({ strapi, subjectType }) => {
      * and a failure still counts towards the lockout. "No side effects" means
      * no enrolment changes, not a free guess.
      */
-    verify: handled(async (ctx) => {
+    verify: respond(async (ctx) => {
       const { subjectId } = subjectOf(ctx);
       const allowRecovery = ctx.request.body?.allowRecovery !== false;
 

@@ -250,6 +250,48 @@ module.exports = ({ strapi }) => {
         .update({ where: { id: factor.id }, data: { failedAttempts: 0, lockedUntil: null } });
     },
 
+    /**
+     * One surface's factors, a page at a time, most recently touched first.
+     *
+     * This is the overview of website accounts, which can run to many
+     * thousands where administrators run to a handful — so it is paged, and it
+     * lists only accounts that hold something: a confirmed authenticator, one
+     * half set up, or one locked out. An account with nothing to reset is not
+     * in it.
+     *
+     * `subjectIds` narrows it to accounts a search already found.
+     */
+    async page({ subjectType, subjectIds = null, page = 1, pageSize = 25 }) {
+      const size = Math.min(Math.max(Number(pageSize) || 25, 1), 100);
+      const current = Math.max(Number(page) || 1, 1);
+      const filter = {
+        subjectType,
+        ...(subjectIds ? { subjectId: { $in: subjectIds.map(String) } } : {}),
+      };
+
+      const [rows, total] = await Promise.all([
+        strapi.db.query(FACTOR).findMany({
+          where: filter,
+          orderBy: [{ updatedAt: 'desc' }, { id: 'desc' }],
+          offset: (current - 1) * size,
+          limit: size,
+        }),
+        strapi.db.query(FACTOR).count({ where: filter }),
+      ]);
+
+      const withCodes = await Promise.all(
+        rows.map(async (row) => ({
+          ...row,
+          recoveryCodesRemaining: row.confirmedAt ? await countRecoveryCodes(subjectType, row.subjectId) : 0,
+        }))
+      );
+
+      return {
+        rows: withCodes,
+        pagination: { page: current, pageSize: size, total, pageCount: Math.max(Math.ceil(total / size), 1) },
+      };
+    },
+
     /** Every confirmed factor, keyed by subject id — for the admin overview. */
     async enrolledMap(subjectType) {
       // No `limit`, and not `limit: -1`: the query engine passes that straight

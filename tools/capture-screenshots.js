@@ -26,6 +26,79 @@ const { chromium } = require('playwright');
 
 const BASE = (process.env.SCREENSHOT_BASE_URL || 'http://localhost:1337').replace(/\/$/, '');
 const TOKEN = process.env.SCREENSHOT_ADMIN_TOKEN || '';
+const USER_DOCUMENT_ID = process.env.SCREENSHOT_USER_DOCUMENT_ID || '';
+
+const SAMPLE_ACCOUNTS = [
+  {
+    id: 101, email: 'sam@example.com', username: 'sam', blocked: false, missing: false,
+    enrolled: true, pendingEnrolment: false, confirmedAt: '2026-08-14T09:12:00.000Z',
+    lastUsedAt: '2026-09-22T17:40:00.000Z', lockedUntil: null, recoveryCodesRemaining: 9,
+  },
+  {
+    id: 102, email: 'alex@example.com', username: 'alex', blocked: false, missing: false,
+    enrolled: true, pendingEnrolment: false, confirmedAt: '2026-07-02T11:00:00.000Z',
+    lastUsedAt: '2026-09-23T08:05:00.000Z',
+    // Far enough ahead that the capture shows it as locked whenever it runs.
+    lockedUntil: new Date(Date.now() + 12 * 60 * 1000).toISOString(), recoveryCodesRemaining: 4,
+  },
+  {
+    id: 103, email: 'jo@example.com', username: 'jo', blocked: false, missing: false,
+    enrolled: false, pendingEnrolment: true, confirmedAt: null,
+    lastUsedAt: null, lockedUntil: null, recoveryCodesRemaining: 0,
+  },
+];
+
+/**
+ * Sample administrators for the Policy page's coverage table. That table lists
+ * every administrator of the instance it is pointed at — real addresses, and
+ * which of them has no authenticator — and a public package is the last place
+ * either belongs. The page's settings still come from the running instance, so
+ * their shape is always the current one; only the people are swapped.
+ */
+const SAMPLE_ROLES = [
+  { id: 1, code: 'strapi-super-admin', name: 'Super Admin' },
+  { id: 2, code: 'strapi-editor', name: 'Editor' },
+  { id: 3, code: 'strapi-author', name: 'Author' },
+];
+
+const SAMPLE_ADMINS = [
+  {
+    id: 1, email: 'lead@example.com', firstname: 'Lee', lastname: 'Ead', roles: [SAMPLE_ROLES[0]],
+    enrolled: true, confirmedAt: '2026-06-02T09:00:00.000Z', lastUsedAt: '2026-09-23T08:15:00.000Z', lockedUntil: null,
+  },
+  {
+    id: 2, email: 'editor@example.com', firstname: 'Ed', lastname: 'Itor', roles: [SAMPLE_ROLES[1]],
+    enrolled: true, confirmedAt: '2026-07-19T14:30:00.000Z', lastUsedAt: '2026-09-22T16:02:00.000Z',
+    lockedUntil: new Date(Date.now() + 12 * 60 * 1000).toISOString(),
+  },
+  {
+    id: 3, email: 'author@example.com', firstname: 'Au', lastname: 'Thor', roles: [SAMPLE_ROLES[2]],
+    enrolled: false, confirmedAt: null, lastUsedAt: null, lockedUntil: null,
+  },
+];
+
+const withSamplePeople = (page) =>
+  page.route('**/two-factor/administration', async (route) => {
+    const response = await route.fetch();
+    const real = await response.json();
+    await route.fulfill(
+      json({
+        data: {
+          ...real.data,
+          roles: SAMPLE_ROLES,
+          admins: SAMPLE_ADMINS,
+          coverage: { total: SAMPLE_ADMINS.length, enrolled: SAMPLE_ADMINS.filter((admin) => admin.enrolled).length },
+        },
+      })
+    );
+  });
+
+const SAMPLE_PANEL_STATUS = {
+  id: 101, email: 'sam@example.com', username: 'sam', blocked: false,
+  enrolled: true, pendingEnrolment: false, method: 'totp', label: 'Account',
+  confirmedAt: '2026-08-14T09:12:00.000Z', lastUsedAt: '2026-09-22T17:40:00.000Z',
+  lockedUntil: null, recoveryCodesRemaining: 9,
+};
 const OUT = path.join(__dirname, '..', 'docs', 'screenshots');
 
 const CARD = { width: 640, height: 860 };
@@ -348,17 +421,88 @@ async function captureAdminPages(browser) {
 
   // Not networkidle: the admin keeps a live reload socket open in development,
   // so the network never goes quiet and the wait would always time out.
-  await page.goto(`${BASE}/admin/settings/two-factor/me`, { waitUntil: 'domcontentloaded' });
+  await page.goto(`${BASE}/admin/settings/two-factor/me`, { waitUntil: 'domcontentloaded', timeout: 180000 });
   await page.setViewportSize({ width: PANEL.width, height: 1000 });
   await page.waitForSelector('text=My authenticator', { timeout: 20000 });
   await page.waitForTimeout(600);
   await shot(page, 'admin-my-authenticator', 'an administrator setting up their own');
 
-  await page.goto(`${BASE}/admin/settings/two-factor/policy`, { waitUntil: 'domcontentloaded' });
+  await withSamplePeople(page);
+  await page.goto(`${BASE}/admin/settings/two-factor/policy`, { waitUntil: 'domcontentloaded', timeout: 180000 });
   await page.setViewportSize({ width: PANEL.width, height: PANEL.height });
   await page.waitForSelector('text=Two-factor authentication', { timeout: 20000 });
   await page.waitForTimeout(600);
   await shot(page, 'admin-policy', 'the policy, coverage and the hosted pages');
+
+  // Website accounts, with sample accounts rather than whoever is in this
+  // database: documentation should not show a real person's address.
+  await page.route('**/two-factor/administration/users?*', (route) =>
+    route.fulfill(json({ data: SAMPLE_ACCOUNTS, meta: { pagination: { page: 1, pageSize: 25, total: 3, pageCount: 1 } } }))
+  );
+  await page.setViewportSize({ width: PANEL.width, height: 900 });
+  await page.goto(`${BASE}/admin/settings/two-factor/users`, { waitUntil: 'domcontentloaded', timeout: 180000 });
+  await page.waitForSelector('text=sam@example.com', { timeout: 20000 });
+  await page.waitForTimeout(600);
+  await shot(page, 'admin-website-accounts', 'website accounts, their authenticators, reset and unlock');
+
+  // The gate in front of every change to somebody else's factor.
+  await page.click('button:has-text("Reset") >> nth=0');
+  await page.waitForSelector('text=Your code', { timeout: 10000 });
+  await page.waitForTimeout(400);
+  await shot(page, 'admin-reset-dialog', 'a reset needs a code from your own authenticator', '[role="dialog"]');
+
+  await context.close();
+
+  if (USER_DOCUMENT_ID) await captureContentManagerPanel(browser);
+  else console.log('  (Content Manager panel skipped — set SCREENSHOT_USER_DOCUMENT_ID to a sample account)');
+}
+
+/**
+ * The panel on a website account in the Content Manager. It needs a real
+ * document to open, so point SCREENSHOT_USER_DOCUMENT_ID at a sample account
+ * made for the purpose — the form beside the panel shows its fields.
+ */
+async function captureContentManagerPanel(browser) {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 2 });
+  await context.addInitScript((token) => {
+    try {
+      window.localStorage.setItem('jwtToken', JSON.stringify(token));
+    } catch {
+      /* storage blocked */
+    }
+  }, TOKEN);
+  const page = await context.newPage();
+
+  await page.route(`**/two-factor/administration/users/${USER_DOCUMENT_ID}`, (route) =>
+    route.fulfill(json({ data: SAMPLE_PANEL_STATUS }))
+  );
+
+  await page.goto(
+    `${BASE}/admin/content-manager/collection-types/plugin::users-permissions.user/${USER_DOCUMENT_ID}`,
+    { waitUntil: 'domcontentloaded', timeout: 180000 }
+  );
+  await page.waitForSelector('text=Reset authenticator', { timeout: 30000 });
+  await page.waitForTimeout(600);
+
+  // Only the side column. The rest of the page is this instance's own data
+  // model — its content-type list and its custom user fields — which says
+  // nothing about the plugin and is not ours to publish.
+  const column = page
+    .locator('div', { has: page.getByText('Reset authenticator', { exact: true }) })
+    .filter({ has: page.getByText('Entry', { exact: true }) })
+    .last();
+
+  const box = await column.boundingBox();
+  if (!box) throw new Error('could not find the side column to crop the Content Manager screenshot to');
+
+  const pad = 16;
+  const file = path.join(OUT, 'admin-user-panel.png');
+  await page.screenshot({
+    path: file,
+    clip: { x: Math.max(box.x - pad, 0), y: Math.max(box.y - pad, 0), width: box.width + pad * 2, height: box.height + pad * 2 },
+  });
+  shots.push({ name: 'admin-user-panel', note: 'the same, on the account in the Content Manager' });
+  console.log('  admin-user-panel.png — the same, on the account in the Content Manager');
 
   await context.close();
 }

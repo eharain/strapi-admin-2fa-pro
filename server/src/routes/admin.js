@@ -125,5 +125,35 @@ module.exports = {
       handler: 'administration.revokeSessions',
       config: permitted('plugin::two-factor.admins.manage'),
     },
+
+    /**
+     * Website accounts. Separate permissions from the administrator ones on
+     * purpose: whoever helps customers who have lost their phone should not
+     * thereby be able to reset another administrator's factor.
+     */
+    {
+      method: 'GET',
+      path: '/administration/users',
+      handler: 'administration.users',
+      config: permitted('plugin::two-factor.users.read'),
+    },
+    {
+      method: 'GET',
+      path: '/administration/users/:id',
+      handler: 'administration.user',
+      config: permitted('plugin::two-factor.users.read'),
+    },
+    {
+      method: 'POST',
+      path: '/administration/users/:id/reset',
+      handler: 'administration.resetUser',
+      config: permitted('plugin::two-factor.users.manage'),
+    },
+    {
+      method: 'POST',
+      path: '/administration/users/:id/unlock',
+      handler: 'administration.unlockUser',
+      config: permitted('plugin::two-factor.users.manage'),
+    },
   ],
 };

@@ -22,6 +22,7 @@ import {
 } from '@strapi/design-system';
 
 import { endpoints, errorMessage, unwrap } from '../api';
+import ConfirmWithCode from '../components/ConfirmWithCode';
 
 /**
  * The policy, and who it currently covers.
@@ -38,6 +39,8 @@ const Policy = () => {
   const [draft, setDraft] = useState(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  // { admin, kind: 'reset' | 'unlock' } while the confirm-with-your-code dialog is open.
+  const [pending, setPending] = useState(null);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -74,17 +77,26 @@ const Policy = () => {
       await load();
     }, 'Policy saved');
 
-  const reset = (admin) =>
-    run(async () => {
-      await post(endpoints.reset(admin.id), {});
-      await load();
-    }, 'Authenticator removed — they will be asked to set one up again');
+  // Changing somebody else's factor needs a code from your own; the dialog asks
+  // for it and shows the server's refusal in its own words if it is wrong.
+  const reset = (admin) => setPending({ admin, kind: 'reset' });
+  const unlock = (admin) => setPending({ admin, kind: 'unlock' });
 
-  const unlock = (admin) =>
-    run(async () => {
-      await post(endpoints.unlock(admin.id), {});
-      await load();
-    }, 'Lockout cleared');
+  const confirm = async ({ code, endSessions }) => {
+    const { admin, kind } = pending;
+    const target = kind === 'reset' ? endpoints.reset(admin.id) : endpoints.unlock(admin.id);
+    const response = await post(target, { code, endSessions });
+    const result = unwrap(response) ?? {};
+    toggleNotification({
+      type: 'success',
+      message:
+        kind === 'reset'
+          ? `${admin.email} will be asked to set up an authenticator again.` +
+            (endSessions && result.sessionsEnded ? ' Their sessions have ended.' : '')
+          : 'Lockout cleared',
+    });
+    await load();
+  };
 
   const revokeSessions = () =>
     run(async () => {
@@ -410,6 +422,23 @@ const Policy = () => {
           </Box>
         </Flex>
       </Layouts.Content>
+
+      <ConfirmWithCode
+        open={Boolean(pending)}
+        onClose={() => setPending(null)}
+        onConfirm={confirm}
+        danger={pending?.kind === 'reset'}
+        title={pending?.kind === 'reset' ? 'Reset their authenticator' : 'Clear the lockout'}
+        action={pending?.kind === 'reset' ? 'Reset' : 'Unlock'}
+        offerSignOut={pending?.kind === 'reset'}
+        description={
+          pending
+            ? pending.kind === 'reset'
+              ? `${pending.admin.email} loses their panel authenticator and every recovery code, and sets a new one up at their next sign-in. Their sign-in to the site, if they have one, is a separate authenticator and is not touched.`
+              : `${pending.admin.email} keeps their authenticator and can try a code again straight away.`
+            : ''
+        }
+      />
     </Page.Main>
   );
 };

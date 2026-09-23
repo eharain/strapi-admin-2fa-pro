@@ -19,7 +19,20 @@ export const endpoints = {
   reset: (id) => `${BASE}/administration/admins/${id}/reset`,
   unlock: (id) => `${BASE}/administration/admins/${id}/unlock`,
   revokeSessions: `${BASE}/administration/sessions/revoke`,
+
+  users: `${BASE}/administration/users`,
+  user: (id) => `${BASE}/administration/users/${encodeURIComponent(id)}`,
+  resetUser: (id) => `${BASE}/administration/users/${encodeURIComponent(id)}/reset`,
+  unlockUser: (id) => `${BASE}/administration/users/${encodeURIComponent(id)}/unlock`,
 };
+
+export const permissions = {
+  usersRead: [{ action: 'plugin::two-factor.users.read', subject: null }],
+  usersManage: [{ action: 'plugin::two-factor.users.manage', subject: null }],
+};
+
+/** Whether a lockout is still running, from the timestamp the server sends. */
+export const isLocked = (lockedUntil) => Boolean(lockedUntil) && new Date(lockedUntil) > new Date();
 
 /** The admin fetch client wraps the body in `data`; so does this plugin. */
 export const unwrap = (response) => response?.data?.data ?? null;

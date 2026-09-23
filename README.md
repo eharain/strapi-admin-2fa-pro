@@ -26,6 +26,11 @@ recovery codes for when the phone is gone, and a policy that says who has to use
 - **A coverage table** showing which administrators are actually protected, and
   a button to end everyone else's sessions so a new policy applies today rather
   than whenever those sessions happen to expire.
+- **Reset and unlock, for both kinds of account.** When someone has lost their
+  phone, an administrator resets their authenticator so they can connect a new
+  one — administrators on the Policy page, website accounts on their own page
+  and on the account's record in the Content Manager. Every such change needs a
+  code from the *acting* administrator's own authenticator.
 - **The same authenticator for users-permissions accounts**, on `POST
   /api/auth/local`, with its own endpoints for your own front end.
 - **Ready-made sign-in pages**, if you would rather not build them: sign in,
@@ -45,6 +50,14 @@ the permission sets the policy and sees who is actually covered:
 | An administrator's own page | The policy, and who it covers |
 | --- | --- |
 | ![My authenticator](docs/screenshots/admin-my-authenticator.png) | ![The policy page](docs/screenshots/admin-policy.png) |
+
+When somebody has lost their phone, their authenticator is reset from the panel
+— website accounts on their own page, or straight from the account in the
+Content Manager — and the reset asks for a code from *your* authenticator:
+
+| Website accounts | Resetting one | On the account itself |
+| --- | --- | --- |
+| ![Website accounts](docs/screenshots/admin-website-accounts.png) | ![The reset asks for your code](docs/screenshots/admin-reset-dialog.png) | ![The Content Manager panel](docs/screenshots/admin-user-panel.png) |
 
 Signing in asks for a code after the password, without leaving the sign-in
 screen. If your site's people sign in through users-permissions, the same thing
@@ -72,8 +85,10 @@ link that opens nothing:
 <img src="docs/screenshots/account-enrolment-mobile.png" alt="Enrolment on a phone" width="300">
 
 The rest are in [docs/screenshots](docs/screenshots). They are captured from a
-running Strapi by `npm run screenshots`, with stubbed API answers rather than a
-real account — documentation should not contain somebody's data.
+running Strapi by `npm run screenshots`, with sample accounts and sample
+administrators in place of whoever is in that instance's database —
+documentation should not contain somebody's data, or say which of an
+instance's administrators has no authenticator.
 
 ## Install
 
@@ -218,12 +233,24 @@ it fails closed.
 | POST | `/me/verify` | any admin | Check a code and change nothing else |
 | GET | `/administration` | `settings.read` | Policy, roles, coverage |
 | PUT | `/administration/settings` | `settings.update` | Change the policy |
-| POST | `/administration/admins/:id/reset` | `admins.manage` | Remove someone's authenticator |
-| POST | `/administration/admins/:id/unlock` | `admins.manage` | Clear a lockout |
+| POST | `/administration/admins/:id/reset` | `admins.manage` + your code | Remove another administrator's authenticator |
+| POST | `/administration/admins/:id/unlock` | `admins.manage` + your code | Clear their lockout |
 | POST | `/administration/sessions/revoke` | `admins.manage` | End every other admin session |
+| GET | `/administration/users?search=&page=` | `users.read` | Website accounts that hold an authenticator |
+| GET | `/administration/users/:id` | `users.read` | One account's authenticator (id or document id) |
+| POST | `/administration/users/:id/reset` | `users.manage` + your code | Remove a website account's authenticator |
+| POST | `/administration/users/:id/unlock` | `users.manage` + your code | Clear its lockout |
 
-The three permissions appear under **Settings → Roles → Two-factor
-authentication**.
+The five permissions appear under **Settings → Roles → Two-factor
+authentication**. Website accounts have their own pair on purpose: whoever
+helps customers who have lost their phone should not thereby be able to reset
+another administrator's factor.
+
+"Your code" means the body carries `{ "code": "123456" }` from the **acting**
+administrator's own authenticator — see [Resetting someone's
+authenticator](#resetting-someones-authenticator). Reset also takes
+`"endSessions": true`. A wrong code answers `403`, not `401`; the reason is in
+that section.
 
 ### Content API (`/api/two-factor`)
 
@@ -351,6 +378,56 @@ default.
 `state` is passed back untouched. Use it the way you would with OAuth: generate
 it, keep it, and refuse a callback that comes back with the wrong one.
 
+## Resetting someone's authenticator
+
+Somebody has lost their phone, or bought a new one, and has no recovery codes
+left. An administrator removes their authenticator; they connect a new one the
+next time they sign in (straight away, if one is required) or from their own
+account page. Their recovery codes go with the old one.
+
+**Two kinds of account, two places.** An administrator of this panel and a
+person signing in to your site are different accounts with different
+authenticators — resetting one never helps the other, and it is the easiest
+mistake to make here:
+
+| Whose | Where |
+| --- | --- |
+| An administrator of this panel | **Settings → Two-factor authentication → Policy**, in the coverage table |
+| A website account (users-permissions) | **Settings → Two-factor authentication → Website accounts**, or the **Two-factor authentication** panel on the account in the Content Manager |
+
+Both offer **Unlock** as well, for someone locked out by wrong codes who still
+has their authenticator.
+
+**Every change needs your own code.** Resetting a factor is the one step an
+attacker holding an administrator's password most wants — it turns "we have
+their password" into "we can enrol our own phone on their account". So the
+panel asks for a code from the *acting* administrator's own authenticator, and
+the server checks it:
+
+- an administrator with no authenticator of their own is told to set one up
+  first;
+- a wrong code counts towards the actor's lockout, so a stolen session cannot
+  guess its way through;
+- recovery codes are not accepted for this — they are for getting yourself back
+  in, not for acting on other people;
+- nobody resets their own factor from here. That is **My authenticator**, which
+  refuses when the policy requires one; allowing it here would be a way round.
+
+A wrong code answers **403**, not 401. The admin panel's fetch client treats any
+401 as an expired session, refreshes it and sends the request again — so a 401
+would submit the same wrong code twice and count it twice.
+
+**Signing them out too.** Tick *Also sign them out everywhere* when the reset is
+because an account may be compromised rather than because a phone was lost.
+Administrator sessions always end. A website account's sessions end only where
+users-permissions issues refresh sessions (`jwtManagement: 'refresh'`): a plain
+JWT stays valid until it expires and nothing on the server can take it back.
+The response says which happened.
+
+Each reset and unlock is logged and emitted as `two-factor.factor.reset` or
+`two-factor.factor.unlock` on `strapi.eventHub`, with who did it, for whatever
+audit trail you keep.
+
 ## Getting locked out
 
 The honest failure modes, and the way out of each:
@@ -358,7 +435,7 @@ The honest failure modes, and the way out of each:
 | What happened | What to do |
 | --- | --- |
 | Lost the phone, have recovery codes | Use one at the prompt — "I do not have my authenticator". |
-| Lost the phone, no recovery codes | Another administrator resets you: Settings → Two-factor authentication → Policy → Reset. |
+| Lost the phone, no recovery codes | An administrator resets it — see [Resetting someone's authenticator](#resetting-someones-authenticator). |
 | Too many wrong codes | Wait out the lockout, use a recovery code, or have an administrator unlock you. |
 | Nobody can get in at all | Delete the row from `two_factor_factors` for that account, directly in the database. |
 | `admin.auth.secret` was rotated and no `encryptionKey` was set | Every factor is unreadable. Truncate `two_factor_factors` and `two_factor_recovery_codes` and enrol again. |

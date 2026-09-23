@@ -1,5 +1,7 @@
 import { Lock } from '@strapi/icons';
 
+import { permissions } from './api';
+import UserTwoFactorPanel from './components/UserTwoFactorPanel';
 import { installLoginGate } from './login-gate';
 import pluginId from './pluginId';
 
@@ -31,6 +33,13 @@ export default {
           permissions: [{ action: 'plugin::two-factor.settings.read', subject: null }],
           Component: () => import('./pages/Policy').then((mod) => ({ default: mod.default })),
         },
+        {
+          id: `${pluginId}.users`,
+          to: `${pluginId}/users`,
+          intlLabel: { id: `${pluginId}.link.users`, defaultMessage: 'Website accounts' },
+          permissions: permissions.usersRead,
+          Component: () => import('./pages/Users').then((mod) => ({ default: mod.default })),
+        },
       ]
     );
 
@@ -39,6 +48,16 @@ export default {
       name: pluginId,
       icon: Lock,
     });
+  },
+
+  bootstrap(app) {
+    // After every plugin has registered, so the Content Manager's APIs exist.
+    // Checked rather than assumed: a Strapi without the side-panel API simply
+    // does not get the panel, and the Website accounts page still works.
+    const contentManager = app.getPlugin('content-manager')?.apis;
+    if (contentManager && typeof contentManager.addEditViewSidePanel === 'function') {
+      contentManager.addEditViewSidePanel([UserTwoFactorPanel]);
+    }
   },
 
   async registerTrads({ locales }) {

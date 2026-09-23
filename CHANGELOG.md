@@ -4,6 +4,67 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [semantic versioning](https://semver.org/).
 
+## [0.7.0] — 2026-09-23
+
+### Added
+
+- **Resetting a website account's authenticator from the panel.** Until now an
+  administrator could reset only other administrators; somebody who had lost
+  the phone behind their *site* sign-in needed a script run against the
+  database. There is now a **Website accounts** page under Settings →
+  Two-factor authentication, listing the accounts that hold an authenticator
+  with search and paging, and a **Two-factor authentication** panel on each
+  users-permissions account in the Content Manager — both with Reset and
+  Unlock. Reset removes the authenticator and its recovery codes, so the person
+  connects a new one at their next sign-in or from their account page.
+- Two permissions of their own, `users.read` and `users.manage`, separate from
+  `admins.manage`: whoever helps customers should not thereby be able to reset
+  another administrator.
+- *Also sign them out everywhere* on a reset, for an account that may be
+  compromised rather than one whose phone was lost. Where a website account
+  uses plain JWTs that cannot be revoked, the response says so rather than
+  pretending.
+- `two-factor.factor.reset` and `two-factor.factor.unlock` on
+  `strapi.eventHub`, carrying who did it.
+
+### Changed
+
+- **Every change to somebody else's authenticator needs a code from your own.**
+  This covers the administrator reset and unlock that already existed as well
+  as the new ones. Resetting a factor is the step an attacker holding an
+  administrator's password most wants — it lets them enrol their own phone on
+  somebody else's account — so a password is no longer enough to take it. An
+  administrator with no authenticator is told to set one up first; a wrong code
+  counts towards the actor's lockout; recovery codes are not accepted for it;
+  and nobody resets their own factor this way, since "My authenticator" is
+  where that happens and it refuses when the policy requires one.
+
+  **Breaking** for anything calling `POST /two-factor/administration/admins/:id/reset`
+  or `/unlock` directly: send `{ "code": "…" }` from the calling
+  administrator's authenticator.
+
+### Fixed
+
+- **A mistyped code counted twice in the admin panel.** The panel's fetch client
+  reads the status from the response body, treats any 401 as an expired
+  session, refreshes it and sends the request again — so on My authenticator a
+  wrong code was submitted twice, and three typos were enough to lock somebody
+  out of their own account. Routes behind an admin session now answer a wrong
+  code with 403. The users-permissions surface keeps 401, which the services
+  calling it already read.
+- **Pages opened by reloading them hid actions the viewer was allowed.**
+  `useRBAC` checks once, on mount, and the panel mounts a page before it has
+  fetched the administrator's permissions — so a reloaded or bookmarked page
+  kept the answer "no" for as long as it stayed open. The plugin's pages read
+  the permissions from the auth state instead, which re-renders when they
+  arrive.
+- **The Policy screenshot in 0.3.0–0.6.0 showed a real instance's
+  administrators**, including one address and which of them had no
+  authenticator, while the README said every screenshot used sample data. The
+  capture now swaps in sample administrators for the Policy page, and crops the
+  Content Manager screenshot to its side column so an instance's own content
+  types and fields stay out of it.
+
 ## [0.6.0] — 2026-09-20
 
 ### Fixed

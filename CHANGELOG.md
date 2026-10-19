@@ -4,6 +4,15 @@ All notable changes to this project are documented here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses
 [semantic versioning](https://semver.org/).
 
+## [0.7.1] - 2026-10-20
+
+### Changed
+
+- The README opens with the introduction video. Its picture loads from GitHub,
+  and `docs/media` stays out of the published package.
+- Development only: Playwright 1.64.1, and the Strapi used for development and
+  tests is 5.58.0. No change to the plugin's code or its peer ranges.
+
 ## [0.7.0] — 2026-09-23
 
 ### Added

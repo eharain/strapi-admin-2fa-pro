@@ -12,6 +12,12 @@ recovery codes for when the phone is gone, and a policy that says who has to use
 
 [![License: AGPL v3](https://img.shields.io/badge/License-AGPL%20v3-blue.svg)](LICENSE)
 
+## Video
+
+[![Two-Factor Auth Pro: a second factor for the Strapi admin panel](https://raw.githubusercontent.com/eharain/strapi-admin-2fa-pro/main/docs/media/video-thumbnail.jpg)](https://www.youtube.com/watch?v=6xHmHWclyW8)
+
+A 1:08 introduction on YouTube, with English captions.
+
 ---
 
 ## What it does
